@@ -1,0 +1,19 @@
+[package]
+name = "viewer"
+version = "0.1.0"
+authors = ["Kitamura <ymyk6602@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sdl2 = "0.34.5"
+gl = "0.14.0"
+cgmath = "0.18.0"
+c_str_macro = "1.0.3"
+imgui = "0.7.0"
+imgui-sdl2 = "0.14.0"
+imgui-opengl-renderer = "0.11.0"
+image = "0.23.14"
+log = "0.4"
+anyhow = "1.0.42"
