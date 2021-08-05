@@ -1,16 +1,20 @@
-use std::path::Path;
 use std::{collections::HashMap, os::raw::c_void};
+use std::{mem, path::Path};
 
 use anyhow::Result;
 use cgmath::Point3;
+use gl::types::{GLfloat, GLsizei, GLsizeiptr};
 use image::{DynamicImage, GenericImageView};
 use log::warn;
+
+use crate::vertex::Vertex;
 
 struct Image {
     image_texture_id: u32,
     width: u32,
     height: u32,
     points: Vec<Point>,
+    points_vertex: Option<Vertex>,
 }
 
 impl Image {
@@ -20,6 +24,7 @@ impl Image {
             width: image_width,
             height: image_height,
             points: Vec::new(),
+            points_vertex: Option::None,
         }
     }
 
@@ -27,25 +32,47 @@ impl Image {
         self.points.insert(self.points.len(), point);
         self
     }
+
+    pub fn build_points_vertex(&mut self) {
+        if self.points.len() > 0 && self.points_vertex.is_none() {
+            let buf_array = self
+                .points
+                .iter()
+                .map(|p| vec![p.loc.x, p.loc.y, p.loc.z, p.color.r, p.color.g, p.color.b])
+                .flatten()
+                .collect::<Vec<f32>>();
+            self.points_vertex = Some(Vertex::new(
+                (buf_array.len() as usize * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                buf_array.as_ptr() as *const c_void,
+                gl::STATIC_DRAW,
+                vec![gl::FLOAT, gl::FLOAT],
+                vec![3, 3],
+                (6 * mem::size_of::<GLfloat>()) as GLsizei,
+                (buf_array.len() / 6) as i32,
+            ));
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct Color {
-    red: u8,
-    green: u8,
-    blue: u8,
+    r: f32,
+    g: f32,
+    b: f32,
 }
 
+/// 点情報を保持する
+/// locには画像の中心を原点(0, 0)、右上を(1, 1)とした座標系での値を保持する。
 struct Point {
     loc: Point3<f32>,
     color: Color,
 }
 
 impl Point {
-    pub fn new(loc: &Point3<f32>, color: &Color) -> Point {
+    pub fn new(x: f32, y: f32, z: f32, r: f32, g: f32, b: f32) -> Point {
         Point {
-            loc: loc.clone(),
-            color: color.clone(),
+            loc: Point3::<f32> { x, y, z },
+            color: Color { r, g, b },
         }
     }
 
@@ -59,8 +86,8 @@ struct PointRelation {
     ids: Vec<String>,
 }
 
-/// Hold images.
-/// `image_map` holds
+/// Textureに登録した画像を管理する。
+/// 画像は左下が原点(pointerの開始地点)になるように、適当にflipする
 pub struct ImageManager {
     images: HashMap<String, Image>,
     current_image_key: String,
@@ -84,6 +111,8 @@ impl ImageManager {
         Ok(())
     }
 
+    /// 画像をtextureに追加する。
+    /// 画像のポインタの先頭が画像の左下であると想定している。
     pub fn add_image(&mut self, image: &DynamicImage, id: &str) {
         let id = id.to_string();
         if self.images.contains_key(&id) {
@@ -149,12 +178,27 @@ impl ImageManager {
         }
     }
 
-    pub fn add_point(&mut self, point: &Point3<f32>, image_id: &str, color: &Color) {
-        let point = Point::new(point, color);
+    pub fn get_current_points_vertex(&self) -> &Option<Vertex> {
+        &self
+            .images
+            .get(&self.current_image_key)
+            .unwrap()
+            .points_vertex
+    }
+
+    pub fn add_point(&mut self, image_id: &str, x: f32, y: f32, z: f32, r: f32, g: f32, b: f32) {
+        let point = Point::new(x, y, z, r, g, b);
         let image = self.images.remove(image_id).unwrap();
         let image = image.add_point(point);
         self.images.insert(image_id.to_string(), image);
     }
 
     pub fn add_point_relation(&mut self) {}
+
+    pub fn build_points_vertex(mut self) -> Self {
+        self.images
+            .iter_mut()
+            .for_each(|(_, image)| image.build_points_vertex());
+        self
+    }
 }

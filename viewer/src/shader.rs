@@ -105,16 +105,17 @@ unsafe fn check_compile_errors(shader: u32, type_: &str) {
     }
 }
 
-struct UniformVariable<T> {
+pub struct UniformVariable<T> {
     pub name: CString, // uniform variable name in glsl program.
     pub value: T,
 }
 
 pub struct Shader {
     id: u32,
-    model_mat: UniformVariable<Matrix4>,
-    view_mat: UniformVariable<Matrix4>,
-    projection_mat: UniformVariable<Matrix4>,
+    pub model_mat: UniformVariable<Matrix4>,
+    pub view_mat: UniformVariable<Matrix4>,
+    pub projection_mat: UniformVariable<Matrix4>,
+    pub point_size: UniformVariable<f32>,
     is_dragging: bool, // 画像をdrag中かどうか
 }
 
@@ -134,11 +135,16 @@ impl Shader {
             name: CString::new("uProjection").unwrap(),
             value: Matrix4::one(),
         };
+        let point_size = UniformVariable {
+            name: CString::new("uPointSize").unwrap(),
+            value: 10.0f32,
+        };
         Shader {
             id,
             model_mat,
             view_mat,
             projection_mat,
+            point_size,
             is_dragging: false,
         }
     }
@@ -230,11 +236,15 @@ impl Shader {
     }
 
     /// glslのuniform変数をセットする
-    pub fn set_uniform_variables(&self) {
+    pub fn set_uniform_variables(&self, id: u32, with_pts: bool) {
         unsafe {
-            set_mat4(self.id, &self.model_mat);
-            set_mat4(self.id, &self.view_mat);
-            set_mat4(self.id, &self.projection_mat);
+            set_mat4(id, &self.model_mat);
+            set_mat4(id, &self.view_mat);
+            set_mat4(id, &self.projection_mat);
+            if with_pts {
+                // println!("point size = {}", self.point_size.value);
+                set_float(id, &self.point_size);
+            }
         }
     }
 
@@ -250,4 +260,11 @@ unsafe fn set_mat4(shader_id: u32, u_var: &UniformVariable<Matrix4>) {
         gl::FALSE,
         u_var.value.as_ptr(),
     );
+}
+
+unsafe fn set_float(shader_id: u32, u_var: &UniformVariable<f32>) {
+    gl::Uniform1f(
+        gl::GetUniformLocation(shader_id, u_var.name.as_ptr()),
+        u_var.value,
+    )
 }

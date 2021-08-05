@@ -87,4 +87,12 @@ impl Vertex {
             gl::BindVertexArray(0);
         }
     }
+
+    pub fn draw_points(&self) {
+        unsafe {
+            gl::BindVertexArray(self.vao);
+            gl::DrawArrays(gl::POINTS, 0, self.vertex_num);
+            gl::BindVertexArray(0);
+        }
+    }
 }

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ptr};
 
+use imgui::im_str;
 use sdl2::event::Event;
 
 use crate::{
@@ -96,6 +97,7 @@ pub struct Presenter {
     fbo_vertex: Vertex,
     shader_map: HashMap<String, Shader>,
     current_shader_key: String,
+    points_shader: Shader,
 }
 
 impl Presenter {
@@ -105,6 +107,7 @@ impl Presenter {
         let current_shader_key = DEFAULT_SHADER_KEY.to_string();
         let (frame_buffer_id, depth_buffer_id, color_buffer_id) =
             create_frame_buffer(width, height);
+        let points_shader = Shader::new("points");
 
         println!("current_shader_key = {}", current_shader_key);
         Presenter {
@@ -116,6 +119,7 @@ impl Presenter {
             fbo_vertex,
             shader_map,
             current_shader_key,
+            points_shader,
         }
     }
 
@@ -196,11 +200,15 @@ impl Presenter {
             self.depth_buffer_id = dbi;
             self.color_buffer_id = cbi;
         }
+
         let image_texture_id = image_manager.get_current_texture_id();
         let (image_width, image_height) = image_manager.get_current_texture_image_size();
         let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
         shader.adjust_aspect_ratio(image_width, image_height, width, height);
         let shader_id = shader.get_shader_id();
+
+        let points_vertex = image_manager.get_current_points_vertex();
+        let points_shader_id = self.points_shader.get_shader_id();
 
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
@@ -208,23 +216,45 @@ impl Presenter {
             // gl::Disable(gl::BLEND);
             // gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
             // gl::Disable(gl::CULL_FACE);
+            gl::Enable(gl::PROGRAM_POINT_SIZE);
 
             gl::Viewport(0, 0, width as i32, height as i32);
             gl::ClearColor(1.0, 1.0, 1.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             gl::UseProgram(shader_id);
-            shader.set_uniform_variables();
+            shader.set_uniform_variables(shader_id, false);
 
             gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
             self.fbo_vertex.draw();
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
+            if let Some(pts_vtx) = points_vertex {
+                gl::UseProgram(points_shader_id);
+                shader.set_uniform_variables(points_shader_id, true);
+                pts_vtx.draw_points();
+            }
+
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
     }
 
-    pub fn draw_imgui(&self, ui: &imgui::Ui) {}
+    pub fn draw_imgui(&mut self, ui: &imgui::Ui) {
+        let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
+        imgui::Window::new(im_str!("Parameters"))
+            .size([200.0, 250.0], imgui::Condition::FirstUseEver)
+            .position([700.0, 10.0], imgui::Condition::FirstUseEver)
+            .build(ui, || {
+                ui.text(im_str!("Image parameter"));
+                ui.separator();
+                ui.separator();
+                ui.text(im_str!("Point parameter"));
+                imgui::Slider::new(im_str!("Point size"))
+                    .range(1.0..=100.0)
+                    .build(&ui, &mut shader.point_size.value);
+                ui.separator();
+            });
+    }
 
     pub fn get_texture_id(&self) -> u32 {
         self.color_buffer_id

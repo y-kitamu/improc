@@ -48,7 +48,8 @@ impl App {
         Ok(app)
     }
 
-    pub fn run(self) -> Result<()> {
+    pub fn run(mut self) -> Result<()> {
+        self.image_manager = self.image_manager.build_points_vertex();
         self.viewer.render(self.presenter, self.image_manager)
     }
 
@@ -65,15 +66,31 @@ impl App {
         self
     }
 
-    pub fn add_point(mut self, point: &Point3<f32>, image_id: &str, color: &Color) -> Self {
-        self.image_manager.add_point(point, image_id, color);
+    pub fn add_point(
+        mut self,
+        image_id: &str,
+        x: f32,
+        y: f32,
+        z: f32,
+        r: f32,
+        g: f32,
+        b: f32,
+    ) -> Self {
+        self.image_manager.add_point(image_id, x, y, z, r, g, b);
         self
     }
 
-    pub fn add_points(self, points: &Vec<Point3<f32>>, image_id: &str, color: &Color) -> Self {
-        points
-            .iter()
-            .fold(self, |app, point| app.add_point(point, image_id, color))
+    pub fn add_points(
+        self,
+        image_id: &str,
+        points: Vec<Point3<f32>>,
+        r: f32,
+        g: f32,
+        b: f32,
+    ) -> Self {
+        points.iter().fold(self, |app, pt| {
+            app.add_point(image_id, pt.x, pt.y, pt.z, r, g, b)
+        })
     }
 
     pub fn add_point_relation(
