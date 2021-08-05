@@ -10,8 +10,6 @@ use crate::{
     viewer::Viewer,
 };
 
-const VIEWER_WINDOW_TITLE: &str = "Image Viewer";
-
 pub struct App {
     viewer: Viewer,
     presenter: Presenter,

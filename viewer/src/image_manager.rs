@@ -8,13 +8,17 @@ use log::warn;
 
 struct Image {
     image_texture_id: u32,
+    width: u32,
+    height: u32,
     points: Vec<Point>,
 }
 
 impl Image {
-    pub fn new(image_texture_id: u32) -> Image {
+    pub fn new(image_texture_id: u32, image_width: u32, image_height: u32) -> Image {
         Image {
             image_texture_id,
+            width: image_width,
+            height: image_height,
             points: Vec::new(),
         }
     }
@@ -127,15 +131,22 @@ impl ImageManager {
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
         println!("Finish register image : id = {}, index = {}", id, texture);
-        self.images.insert(id, Image::new(texture));
+        self.images
+            .insert(id, Image::new(texture, image.width(), image.height()));
     }
 
     pub fn get_current_texture_id(&self) -> u32 {
-        let texture_id = match self.images.get(&self.current_image_key) {
+        match self.images.get(&self.current_image_key) {
             Some(image) => image.image_texture_id,
             None => 0,
-        };
-        texture_id
+        }
+    }
+
+    pub fn get_current_texture_image_size(&self) -> (u32, u32) {
+        match self.images.get(&self.current_image_key) {
+            Some(image) => (image.width, image.height),
+            None => (1u32, 1u32),
+        }
     }
 
     pub fn add_point(&mut self, point: &Point3<f32>, image_id: &str, color: &Color) {

@@ -1,27 +1,14 @@
 use std::{collections::HashMap, ptr};
 
-use c_str_macro::c_str;
-use cgmath::{perspective, Matrix4, Point3, Vector3};
+use sdl2::event::Event;
 
 use crate::{
     image_manager::ImageManager,
     shader::{self, Shader},
-    vertex::{self, create_simple_vertex, Vertex},
+    vertex::{self, Vertex},
 };
 
 const DEFAULT_SHADER_KEY: &str = "default";
-
-// frame buffer object
-pub struct Presenter {
-    frame_buffer_id: u32,
-    depth_buffer_id: u32,
-    color_buffer_id: u32,
-    fbo_width: u32,
-    fbo_height: u32,
-    fbo_vertex: Vertex,
-    shader_map: HashMap<String, Shader>,
-    current_shader_key: String,
-}
 
 /// create frame buffer.
 /// Return `frame_buffer_id`, `color_buffer_id`, `depth_buffer_id`
@@ -99,6 +86,18 @@ fn delete_fbo(frame_buffer_id: u32, depth_buffer_id: u32, color_buffer_id: u32) 
     }
 }
 
+// frame buffer object
+pub struct Presenter {
+    frame_buffer_id: u32,
+    depth_buffer_id: u32,
+    color_buffer_id: u32,
+    fbo_width: u32,
+    fbo_height: u32,
+    fbo_vertex: Vertex,
+    shader_map: HashMap<String, Shader>,
+    current_shader_key: String,
+}
+
 impl Presenter {
     pub fn new(width: u32, height: u32) -> Presenter {
         let fbo_vertex = vertex::create_simple_vertex();
@@ -120,6 +119,71 @@ impl Presenter {
         }
     }
 
+    pub fn process_event(&mut self, event: &Event) -> bool {
+        let current_shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
+        let processed = match event {
+            Event::MouseWheel {
+                timestamp,
+                window_id,
+                which,
+                x,
+                y,
+                direction,
+            } => {
+                current_shader.on_mouse_wheel_event(timestamp, window_id, which, x, y, direction);
+                true
+            }
+            Event::MouseButtonDown {
+                timestamp,
+                window_id,
+                which,
+                mouse_btn,
+                clicks,
+                x,
+                y,
+            } => {
+                // 左上(0, 0), 右下(width, height)の座標系を
+                // 中心(0, 0), 左上(-1.0, 1.0), 右下(1.0, -1.0)の座標系に変換する
+                let fx = *x as f32 / self.fbo_width as f32 * 2.0f32 - 1.0f32;
+                let fy = 1.0f32 - *y as f32 / self.fbo_height as f32 * 2.0f32;
+                current_shader
+                    .on_mouse_button_down(timestamp, window_id, which, mouse_btn, clicks, fx, fy);
+                true
+            }
+            Event::MouseButtonUp {
+                timestamp,
+                window_id,
+                which,
+                mouse_btn,
+                clicks,
+                x,
+                y,
+            } => {
+                current_shader
+                    .on_mouse_button_up(timestamp, window_id, which, mouse_btn, clicks, x, y);
+                true
+            }
+            Event::MouseMotion {
+                timestamp,
+                window_id,
+                which,
+                mousestate,
+                x,
+                y,
+                xrel,
+                yrel,
+            } => {
+                let dx = *xrel as f32 / self.fbo_width as f32 * 2.0f32;
+                let dy = -*yrel as f32 / self.fbo_height as f32 * 2.0f32;
+                current_shader
+                    .on_mouse_motion_event(timestamp, window_id, which, mousestate, x, y, dx, dy);
+                true
+            }
+            _ => false,
+        };
+        processed
+    }
+
     pub fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
         if (width != self.fbo_width) || (height != self.fbo_height) {
             delete_fbo(
@@ -133,7 +197,9 @@ impl Presenter {
             self.color_buffer_id = cbi;
         }
         let image_texture_id = image_manager.get_current_texture_id();
-        let shader = self.shader_map.get(&self.current_shader_key).unwrap();
+        let (image_width, image_height) = image_manager.get_current_texture_image_size();
+        let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
+        shader.adjust_aspect_ratio(image_width, image_height, width, height);
         let shader_id = shader.get_shader_id();
 
         unsafe {
@@ -148,6 +214,7 @@ impl Presenter {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             gl::UseProgram(shader_id);
+            shader.set_uniform_variables();
 
             gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
             self.fbo_vertex.draw();
@@ -156,6 +223,8 @@ impl Presenter {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
     }
+
+    pub fn draw_imgui(&self, ui: &imgui::Ui) {}
 
     pub fn get_texture_id(&self) -> u32 {
         self.color_buffer_id

@@ -28,7 +28,7 @@ pub struct Viewer {
     sdl_context: Sdl,
     video_subsystem: VideoSubsystem,
     window: sdl2::video::Window,
-    gl_context: sdl2::video::GLContext,
+    _gl_context: sdl2::video::GLContext,
     screen_vertex: Vertex,
     screen_shader: Shader,
 }
@@ -47,7 +47,7 @@ impl Viewer {
             sdl_context,
             video_subsystem,
             window,
-            gl_context,
+            _gl_context: gl_context,
             screen_vertex,
             screen_shader,
         };
@@ -79,7 +79,9 @@ impl Viewer {
                         keycode: Some(Keycode::Escape),
                         ..
                     } => break 'running,
-                    _ => {}
+                    _ => {
+                        presenter.process_event(&event);
+                    }
                 }
             }
             // draw image to fbo
@@ -91,12 +93,18 @@ impl Viewer {
             self.draw(texture_id);
 
             // draw imgui widgets
-            self.draw_imgui(
-                &mut imgui_context,
-                &mut imgui_sdl2_context,
-                &renderer,
-                &event_pump,
+            imgui_sdl2_context.prepare_frame(
+                imgui_context.io_mut(),
+                &self.window,
+                &event_pump.mouse_state(),
             );
+            let ui = imgui_context.frame();
+
+            self.draw_imgui(&ui); // 情報表示のみ
+            presenter.draw_imgui(&ui); // event取得
+
+            imgui_sdl2_context.prepare_render(&ui, &self.window);
+            renderer.render(ui);
 
             self.window.gl_swap_window();
             ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
@@ -129,20 +137,7 @@ impl Viewer {
         }
     }
 
-    fn draw_imgui(
-        &self,
-        imgui_context: &mut imgui::Context,
-        imgui_sdl2_context: &mut imgui_sdl2::ImguiSdl2,
-        renderer: &imgui_opengl_renderer::Renderer,
-        event_pump: &sdl2::EventPump,
-    ) {
-        imgui_sdl2_context.prepare_frame(
-            imgui_context.io_mut(),
-            &self.window,
-            &event_pump.mouse_state(),
-        );
-
-        let ui = imgui_context.frame();
+    fn draw_imgui(&self, ui: &imgui::Ui) {
         imgui::Window::new(im_str!("Information"))
             .size([300.0, 450.0], imgui::Condition::FirstUseEver)
             .position([10.0, 10.0], imgui::Condition::FirstUseEver)
@@ -163,8 +158,5 @@ impl Viewer {
 
                 ui.separator();
             });
-
-        imgui_sdl2_context.prepare_render(&ui, &self.window);
-        renderer.render(ui);
     }
 }

@@ -16,14 +16,14 @@ pub fn create_simple_vertex() -> Vertex {
     #[rustfmt::skip]
     let buf_array: [f32; 30] = [
         // 0
-        -1.0, -1.0, 1.0, 0.0, 1.0,
-        -1.0, 1.0, 1.0, 0.0, 0.0,
-        1.0, 1.0, 1.0, 1.0, 0.0,
-        -1.0, -1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 1.0, 1.0, 0.0,
-        1.0, -1.0, 1.0, 1.0, 1.0,
+        -1.0, -1.0, 1.0, 0.0, 0.0,
+        -1.0, 1.0, 1.0, 0.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        -1.0, -1.0, 1.0, 0.0, 0.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, -1.0, 1.0, 1.0, 0.0,
     ];
-    let vertex = Vertex::new(
+    Vertex::new(
         (30 * mem::size_of::<GLfloat>()) as GLsizeiptr,
         buf_array.as_ptr() as *const c_void,
         gl::STATIC_DRAW,
@@ -31,8 +31,7 @@ pub fn create_simple_vertex() -> Vertex {
         vec![3, 2],
         (5 * mem::size_of::<GLfloat>()) as GLsizei,
         6,
-    );
-    return vertex;
+    )
 }
 
 impl Vertex {
