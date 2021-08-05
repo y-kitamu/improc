@@ -2,6 +2,7 @@ use anyhow::Result;
 use cgmath::Point3;
 
 use image::DynamicImage;
+use sdl2::sys::SDL_SetWindowResizable;
 
 use crate::{
     image_manager::{Color, ImageManager},
@@ -35,6 +36,9 @@ impl App {
             .position_centered()
             .build()
             .unwrap();
+        unsafe {
+            SDL_SetWindowResizable(window.raw(), sdl2::sys::SDL_bool::SDL_TRUE);
+        }
         let gl_context = window.gl_create_context().unwrap();
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as _);
 

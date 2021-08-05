@@ -56,7 +56,7 @@ impl Viewer {
         viewer
     }
 
-    pub fn render(self, presenter: Presenter, image_manager: ImageManager) -> Result<()> {
+    pub fn render(self, mut presenter: Presenter, image_manager: ImageManager) -> Result<()> {
         let mut imgui_context = imgui::Context::create();
         imgui_context.set_ini_filename(None);
 
