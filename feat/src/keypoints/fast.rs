@@ -81,7 +81,6 @@ impl KeypointDetector for FASTCornerDetector {
             key_points.append(&mut kpts);
         }
 
-        let d = (self.circle_points.len() / 4) as usize;
         let w = image.width() as usize;
         let h = image.height() as usize;
         let radius = self.radius as usize;
@@ -90,11 +89,11 @@ impl KeypointDetector for FASTCornerDetector {
             for x in radius..w - radius {
                 let c = raw[(y * w + x) as usize] as f32;
                 // rough test
-                let l = raw[y * w + x + d] as f32;
-                let r = raw[y * w + x - d] as f32;
+                let l = raw[y * w + x + radius] as f32;
+                let r = raw[y * w + x - radius] as f32;
                 let crf_lr = calc_crf(c, l, r);
-                let t = raw[(y - d) * w + x] as f32;
-                let b = raw[(y + d) * w + x] as f32;
+                let t = raw[(y - radius) * w + x] as f32;
+                let b = raw[(y + radius) * w + x] as f32;
                 let crf_tb = calc_crf(c, t, b);
                 if crf_lr.min(crf_tb) < self.threshold {
                     continue;
@@ -125,7 +124,45 @@ impl KeypointDetector for FASTCornerDetector {
 
 #[cfg(test)]
 mod tests {
-    use super::FASTCornerDetector;
+    use super::{calc_crf, FASTCornerDetector};
+    use crate::keypoints::KeypointDetector;
+
+    #[test]
+    fn fast_detect() {
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1);
+        let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
+            if (x < 16) && (y >= 16) {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+        let key_points = fast.detect(&img, 0);
+        assert_eq!(key_points.len(), 8);
+        assert_eq!(key_points[0].loc.x as usize, 13);
+        assert_eq!(key_points[0].loc.y as usize, 16);
+        assert_eq!(key_points[1].loc.x as usize, 14);
+        assert_eq!(key_points[1].loc.y as usize, 16);
+        assert_eq!(key_points[2].loc.x as usize, 15);
+        assert_eq!(key_points[2].loc.y as usize, 16);
+        assert_eq!(key_points[3].loc.x as usize, 13);
+        assert_eq!(key_points[3].loc.y as usize, 17);
+        assert_eq!(key_points[4].loc.x as usize, 14);
+        assert_eq!(key_points[4].loc.y as usize, 17);
+        assert_eq!(key_points[5].loc.x as usize, 15);
+        assert_eq!(key_points[5].loc.y as usize, 17);
+        assert_eq!(key_points[6].loc.x as usize, 14);
+        assert_eq!(key_points[6].loc.y as usize, 18);
+        assert_eq!(key_points[7].loc.x as usize, 15);
+        assert_eq!(key_points[7].loc.y as usize, 18);
+    }
+
+    #[test]
+    fn test_clac_crf() {
+        assert_eq!(calc_crf(0.0, 1.0, -1.0), 2.0);
+        assert_eq!(calc_crf(1.0, 1.0, -1.0), 4.0);
+        assert_eq!(calc_crf(1.0, 2.0, -1.0), 5.0);
+    }
 
     #[test]
     fn fast3() {
