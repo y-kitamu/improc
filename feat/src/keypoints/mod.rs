@@ -5,6 +5,7 @@ use nalgebra::geometry::Point2;
 pub mod fast;
 pub mod imgproc;
 
+#[derive(Clone, Copy)]
 pub struct KeyPoint {
     loc: Point2<f32>,
     image_pyramid_level: u32,
