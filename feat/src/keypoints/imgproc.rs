@@ -17,21 +17,22 @@ where
 
     let x_scale = img.width() as f32 / width as f32;
     let y_scale = img.height() as f32 / height as f32;
-    let y_stride = width * x_stride;
+    let y_stride = img.width() as usize * x_stride;
+
     for y in 0..height {
-        let y_offset = y * y_stride;
         for x in 0..width {
             let (fx, fy) = (x as f32 * x_scale, y as f32 * y_scale);
             let (dx, dy) = (fx.fract(), fy.fract());
             let (ix, iy) = (fx.floor() as usize, fy.floor() as usize);
             let off = iy * y_stride + ix * x_stride;
             for c in 0..x_stride {
-                resized[y_offset + x * x_stride + c] =
+                resized.push(
                     ((1.0f32 - dx) * (1.0f32 - dy) * data[off + c].to_f32().unwrap()
                         + dx * (1.0f32 - dy) * data[off + x_stride + c].to_f32().unwrap()
                         + (1.0f32 - dx) * dy * data[off + y_stride + c].to_f32().unwrap()
                         + dx * dy * data[off + y_stride + x_stride + c].to_f32().unwrap())
-                        as u8;
+                        as u8,
+                );
             }
         }
     }
@@ -41,6 +42,28 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::resize;
+
     #[test]
-    fn test_resize() {}
+    fn test_resize() {
+        let length: u32 = 256;
+        let half = length / 2;
+        let test_image = image::RgbImage::from_fn(length, length, |x, y| {
+            image::Rgb([((x + y) / 2) as u8, 0, 0])
+        });
+        let res = resize(&test_image, half, half);
+        assert_eq!(res.len(), (half * half * 3) as usize);
+
+        for y in 0..half {
+            for x in 0..half {
+                assert_eq!(
+                    res[((y * half + x) * 3) as usize],
+                    (x + y) as u8,
+                    "(x, y) = {}, {}",
+                    x,
+                    y
+                );
+            }
+        }
+    }
 }
