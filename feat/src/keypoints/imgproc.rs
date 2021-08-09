@@ -3,6 +3,20 @@ use std::ops::Deref;
 use image::{ColorType, ImageBuffer, Pixel};
 use num_traits::ToPrimitive;
 
+/// gaussian filter
+pub fn gaussian<P, Container>(
+    img: &ImageBuffer<P, Container>,
+    kernel_size: u32,
+    sigma: f32,
+) -> Vec<u8>
+where
+    P: Pixel + 'static,
+    P::Subpixel: 'static,
+    Container: Deref<Target = [P::Subpixel]>,
+{
+    Vec::new()
+}
+
 /// convert to gray scale.
 pub fn gray<P, Container>(img: &ImageBuffer<P, Container>) -> Vec<u8>
 where
