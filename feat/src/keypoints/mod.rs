@@ -17,6 +17,14 @@ impl KeyPoint {
             image_pyramid_level: level,
         }
     }
+
+    pub fn x(&self) -> f32 {
+        self.loc.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.loc.y
+    }
 }
 
 pub trait KeypointDetector {

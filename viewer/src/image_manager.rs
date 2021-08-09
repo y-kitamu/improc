@@ -186,6 +186,8 @@ impl ImageManager {
             .points_vertex
     }
 
+    /// add point (`x`, `y`, `z`) to image of `image_id`.
+    /// The coordinate system is normalized from -1.0 to 1.0 with image center as (0, 0).
     pub fn add_point(&mut self, image_id: &str, x: f32, y: f32, z: f32, r: f32, g: f32, b: f32) {
         let point = Point::new(x, y, z, r, g, b);
         let image = self.images.remove(image_id).unwrap();
