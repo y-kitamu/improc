@@ -3,6 +3,32 @@ use std::ops::Deref;
 use image::{ColorType, ImageBuffer, Pixel};
 use num_traits::ToPrimitive;
 
+use super::KeyPoint;
+
+/// Non-Maximum Supression (NMS)
+// とりあえず、O(n^2)で実装してみて高速化を検討する
+pub fn nms(kpts: &Vec<KeyPoint>, kernel_size: u32) -> Vec<KeyPoint> {
+    if kpts.len() == 0 {
+        return Vec::<KeyPoint>::new();
+    }
+    let half = kernel_size as f32 / 2.0;
+    let mut kpts = kpts.clone();
+    kpts.sort_unstable_by(|a, b| a.crf().partial_cmp(&b.crf()).unwrap());
+
+    let mut supressed: Vec<KeyPoint> = Vec::new();
+    // println!("len = {}", kpts.len());
+    'outer: for i in (0..kpts.len()).rev() {
+        // println!("{}", kpts[i].crf());
+        for kpt in &supressed {
+            if (kpt.x() - kpts[i].x()).abs() < half && (kpt.y() - kpts[i].y()).abs() < half {
+                continue 'outer;
+            }
+        }
+        supressed.push(kpts[i]);
+    }
+    supressed
+}
+
 /// gaussian filter
 pub fn gaussian<P, Container>(
     img: &ImageBuffer<P, Container>,
@@ -88,7 +114,25 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{gray, resize};
+    use super::super::KeyPoint;
+    use super::{gray, nms, resize};
+
+    #[test]
+    fn test_nms() {
+        let kpts = vec![
+            KeyPoint::new(3, 3, 10.0, 1),
+            KeyPoint::new(3, 4, 12.5, 1),
+            KeyPoint::new(3, 6, 11.8, 1),
+            KeyPoint::new(5, 4, 11.5, 1),
+            KeyPoint::new(3, 2, 8.0, 1),
+        ];
+        let supressed = nms(&kpts, 3);
+        assert_eq!(supressed.len(), 4);
+        assert!((supressed[0].crf() - 12.5).abs() < 1e-5);
+        assert!((supressed[1].crf() - 11.8).abs() < 1e-5);
+        assert!((supressed[2].crf() - 11.5).abs() < 1e-5);
+        assert!((supressed[3].crf() - 8.0).abs() < 1e-5);
+    }
 
     #[test]
     fn test_gray() {

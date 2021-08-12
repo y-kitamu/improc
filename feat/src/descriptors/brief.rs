@@ -1,7 +1,6 @@
 use bitvec::prelude::*;
 use image::{GrayImage, Luma, Pixel};
 use nalgebra::Point2;
-use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
 use crate::keypoints::{imgproc::gaussian, KeyPoint};
@@ -40,14 +39,15 @@ impl Brief {
 
 impl Extractor<Descriptor<BitVec>> for Brief {
     fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BitVec>> {
-        let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
         let gauss =
             image::GrayImage::from_raw(img.width(), img.height(), gaussian(img, 9, 3.05)).unwrap();
         let data = gauss.as_raw();
         let stride_x = Luma::<u8>::CHANNEL_COUNT as usize;
         let stride_y = gauss.width() as usize * stride_x;
+        let mut descriptors: Vec<Descriptor<BitVec>> = Vec::new();
 
         for kpt in kpts {
+            let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
             for (p0, p1) in &self.binary_test_pairs {
                 let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);
                 let (dx0, dy0) = (p0.x as usize, p0.y as usize);
@@ -56,13 +56,13 @@ impl Extractor<Descriptor<BitVec>> for Brief {
                 let idx1 = (cy + dy1) * stride_y + (cx + dx1) * stride_y;
                 desc.push(data[idx0] < data[idx1])
             }
+            let desc = Descriptor {
+                kpt: kpt.clone(),
+                value: BitVec::new(),
+            };
+            descriptors.push(desc);
         }
 
-        let desc = Descriptor {
-            kpt: KeyPoint::new(0, 0, 0),
-            value: BitVec::new(),
-        };
-        let descriptors = vec![desc];
         descriptors
     }
 }

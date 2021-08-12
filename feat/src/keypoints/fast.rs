@@ -1,8 +1,5 @@
 //! Implementation of FAST corner detector.
-
-use std::cmp::min;
-
-use image::{DynamicImage, GrayImage, RgbImage};
+use image::GrayImage;
 use nalgebra::Point2;
 
 use super::{KeyPoint, KeypointDetector};
@@ -114,7 +111,7 @@ impl KeypointDetector for FASTCornerDetector {
                     }
                 }
                 if crf > self.threshold {
-                    key_points.push(KeyPoint::new(x, y, level));
+                    key_points.push(KeyPoint::new(x, y, crf, level));
                 }
             }
         }
