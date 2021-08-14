@@ -11,6 +11,8 @@ jobs:
 
       - name: Setup
         run: sudo apt-get install libsdl2-dev
+
+      - name: Install tarpaulin
         run: cargo install tarpaulin
 
       - name:                   Generate code coverage
