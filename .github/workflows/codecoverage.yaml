@@ -13,7 +13,7 @@ jobs:
         run: sudo apt-get install libsdl2-dev
 
       - name: Install tarpaulin
-        run: cargo install tarpaulin
+        run: cargo install cargo-tarpaulin
 
       - name:                   Generate code coverage
         run: |
