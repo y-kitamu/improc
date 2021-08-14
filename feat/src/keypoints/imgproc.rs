@@ -30,17 +30,65 @@ pub fn nms(kpts: &Vec<KeyPoint>, kernel_size: u32) -> Vec<KeyPoint> {
 }
 
 /// gaussian filter
+// TODO: dftによる高速化
+// : http://signalprocess.binarized.work/2019/04/01/optimize_any_fir_filter_calculation_by_dft/
 pub fn gaussian<P, Container>(
     img: &ImageBuffer<P, Container>,
     kernel_size: u32,
-    sigma: f32,
+    sigma: f32, // stddev
 ) -> Vec<u8>
 where
     P: Pixel + 'static,
     P::Subpixel: 'static,
     Container: Deref<Target = [P::Subpixel]>,
 {
-    Vec::new()
+    let (width, height) = (img.width() as usize, img.height() as usize);
+    let data = img.as_raw();
+    let x_stride = P::CHANNEL_COUNT as usize;
+    let y_stride = width * x_stride;
+    let mut res: Vec<u8> = Vec::with_capacity(height * y_stride);
+    let kernel = create_gauss_kernel(kernel_size, sigma);
+    let half = (kernel_size / 2) as isize;
+
+    for y in 0..height as isize {
+        for x in 0..width as isize {
+            let mut sums: Vec<f32> = vec![0.0; x_stride];
+            for dy in -half..=half {
+                for dx in -half..=half {
+                    let cy = (y + dy).clamp(0, height as isize - 1) as usize;
+                    let cx = (x + dx).clamp(0, width as isize - 1) as usize;
+                    let offset = cy * y_stride + cx * x_stride;
+                    let kval =
+                        kernel[(dy + half) as usize * kernel_size as usize + (dx + half) as usize];
+                    for c in 0..x_stride {
+                        sums[c] += kval * data[offset + c].to_f32().unwrap();
+                    }
+                }
+            }
+            for c in 0..x_stride {
+                res.push(sums[c].round() as u8);
+            }
+        }
+    }
+    res
+}
+
+fn create_gauss_kernel(kernel_size: u32, sigma: f32) -> Vec<f32> {
+    let mut kernel: Vec<f32> = Vec::with_capacity((kernel_size * kernel_size) as usize);
+    let half = (kernel_size / 2) as isize;
+    let denomi = 1.0 / (2.0 * sigma * sigma);
+
+    let mut sum = 0.0f32;
+    for y in -half..=half {
+        for x in -half..=half {
+            let val = (-(x * x + y * y) as f32 * denomi).exp();
+            kernel.push(val);
+            sum += val;
+        }
+    }
+    let scale = 1.0 / sum;
+    let kernel = kernel.iter().map(|val| val * scale).collect();
+    kernel
 }
 
 /// convert to gray scale.
@@ -115,7 +163,38 @@ where
 #[cfg(test)]
 mod tests {
     use super::super::KeyPoint;
-    use super::{gray, nms, resize};
+    use super::{create_gauss_kernel, gaussian, gray, nms, resize};
+
+    #[test]
+    fn test_gaussian() {
+        let length = 10;
+        let kernel_size = 3;
+        let sigma = 1.0f32;
+        let img = image::RgbImage::from_fn(length, length, |_, _| image::Rgb([10u8, 5u8, 1u8]));
+        let res = gaussian(&img, kernel_size, sigma);
+        assert_eq!(res.len(), (length * length * 3) as usize);
+        for i in 0..length * length {
+            assert_eq!(res[(i * 3 + 0) as usize], 10, "i = {}", i);
+            assert_eq!(res[(i * 3 + 1) as usize], 5, "i = {}", i);
+            assert_eq!(res[(i * 3 + 2) as usize], 1, "i = {}", i);
+        }
+    }
+
+    #[test]
+    fn test_create_gauss_kernel() {
+        let kernel = create_gauss_kernel(3, 1.0);
+        assert_eq!(kernel.len(), 9);
+        assert!((kernel.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+        assert!((kernel[0] - 0.07511360795411151).abs() < 1e-5);
+        assert!((kernel[0] - kernel[2]).abs() < 1e-5);
+        assert!((kernel[0] - kernel[6]).abs() < 1e-5);
+        assert!((kernel[0] - kernel[8]).abs() < 1e-5);
+        assert!((kernel[1] - 0.12384140315297397).abs() < 1e-5);
+        assert!((kernel[1] - kernel[3]).abs() < 1e-5);
+        assert!((kernel[1] - kernel[5]).abs() < 1e-5);
+        assert!((kernel[1] - kernel[7]).abs() < 1e-5);
+        assert!((kernel[4] - 0.2041799555716581).abs() < 1e-5);
+    }
 
     #[test]
     fn test_nms() {
