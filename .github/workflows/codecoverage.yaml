@@ -5,16 +5,16 @@ jobs:
   test:
     name:                       coverage
     runs-on:                    ubuntu-latest
-    container:
-      image:                    xd009642/tarpaulin:develop-nightly
-      options:                  --security-opt seccomp=unconfined
     steps:
       - name:                   Checkout repository
         uses:                   actions/checkout@v2
 
+      - name: Setup
+        run: sudo apt-get install libsdl2-dev
+
       - name:                   Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+          cargo tarpaulin --verbose --all-features --workspace --out Xml
 
       - name:                   Upload to codecov.io
         uses:                   codecov/codecov-action@v1
