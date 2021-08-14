@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/y-kitamu/improc/branch/master/graph/badge.svg?token=MUWH5DW2X3)](https://codecov.io/gh/y-kitamu/improc)
+
 # improc
 Image Processing with Rust
 
