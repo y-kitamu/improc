@@ -200,6 +200,8 @@ impl Presenter {
             self.frame_buffer_id = fbi;
             self.depth_buffer_id = dbi;
             self.color_buffer_id = cbi;
+            self.fbo_width = width;
+            self.fbo_height = height;
         }
 
         let image_texture_id = image_manager.get_current_texture_id();
