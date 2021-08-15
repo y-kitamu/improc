@@ -3,6 +3,7 @@ mod dual;
 
 use std::{collections::HashMap, ptr};
 
+use imgui::im_str;
 use sdl2::event::Event;
 
 use crate::{
@@ -112,6 +113,19 @@ impl Presenter {
     pub fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
         current_mode.draw_imgui(ui, image_manager);
+        ui.main_menu_bar(|| {
+            ui.menu(&im_str!("modes"), true, || {
+                for key in self.modes.keys() {
+                    let selected = self.current_modes_key == *key;
+                    if imgui::MenuItem::new(&im_str!("{}", key))
+                        .selected(selected)
+                        .build(ui)
+                    {
+                        self.current_modes_key = key.clone();
+                    }
+                }
+            })
+        });
     }
 }
 
