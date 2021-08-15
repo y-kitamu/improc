@@ -87,7 +87,8 @@ fn delete_fbo(frame_buffer_id: u32, depth_buffer_id: u32, color_buffer_id: u32) 
     }
 }
 
-// frame buffer object
+/// Presenter of MVP architecture.
+/// This class holds frame buffer object for off-screen rendering.
 pub struct Presenter {
     frame_buffer_id: u32,
     depth_buffer_id: u32,
@@ -212,10 +213,6 @@ impl Presenter {
 
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
-            // gl::Enable(gl::DEPTH_TEST);
-            // gl::Disable(gl::BLEND);
-            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
-            // gl::Disable(gl::CULL_FACE);
             gl::Enable(gl::PROGRAM_POINT_SIZE);
 
             gl::Viewport(0, 0, width as i32, height as i32);

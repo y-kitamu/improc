@@ -10,14 +10,18 @@ use crate::{
     viewer::Viewer,
 };
 
+/// User interface of the image viewer app.
+/// This struct prepare `Viewer`, `Presenter` and `ImageManager` to render images and widgets.
+/// Users can add images and points via this struct.
 pub struct App {
-    viewer: Viewer,
-    presenter: Presenter,
-    image_manager: ImageManager,
+    viewer: Viewer,              // view
+    presenter: Presenter,        // presenter
+    image_manager: ImageManager, //model
 }
 
-#[allow(dead_code)]
 impl App {
+    /// Initialize sdl2 and opengl context and
+    /// create `Viewer`, `Presente` and `ImageManager` instance.
     pub fn new(width: u32, height: u32) -> Result<App> {
         let sdl_context = sdl2::init().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
@@ -48,6 +52,7 @@ impl App {
         Ok(app)
     }
 
+    /// Start rendering images and widgets
     pub fn run(mut self) -> Result<()> {
         self.image_manager = self.image_manager.build_points_vertex();
         self.viewer.render(self.presenter, self.image_manager)

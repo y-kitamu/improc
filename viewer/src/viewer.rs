@@ -23,7 +23,7 @@ impl Display for ViewerError {
 
 impl std::error::Error for ViewerError {}
 
-/// Image Viewer
+/// View of MVP architecture.
 pub struct Viewer {
     sdl_context: Sdl,
     video_subsystem: VideoSubsystem,

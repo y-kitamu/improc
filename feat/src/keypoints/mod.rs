@@ -4,8 +4,9 @@ use nalgebra::geometry::Point2;
 
 pub mod fast;
 pub mod imgproc;
+pub mod linalg;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct KeyPoint {
     loc: Point2<f32>,
     cornerness: f32,

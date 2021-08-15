@@ -2,7 +2,7 @@
 use image::GrayImage;
 use nalgebra::Point2;
 
-use super::{KeyPoint, KeypointDetector};
+use super::{imgproc::nms, KeyPoint, KeypointDetector};
 
 /// 指定した半径`radius`の円周上の点を取得する
 fn create_circle(radius: u32) -> Vec<Point2<f32>> {
@@ -50,15 +50,17 @@ pub struct FASTCornerDetector {
     threshold: f32,
     n_pyramid: u32,
     circle_points: Vec<Point2<f32>>,
+    use_nms: bool,
 }
 
 impl FASTCornerDetector {
-    pub fn new(radius: u32, threshold: f32, n_pyramid: u32) -> Self {
+    pub fn new(radius: u32, threshold: f32, n_pyramid: u32, use_nms: bool) -> Self {
         FASTCornerDetector {
             radius,
             threshold,
             n_pyramid,
             circle_points: create_circle(radius),
+            use_nms,
         }
     }
 }
@@ -103,8 +105,8 @@ impl KeypointDetector for FASTCornerDetector {
                     let p1 = self.circle_points[i + pt_offset];
                     crf = crf.min(calc_crf(
                         c,
-                        raw[(y - p0.y as usize) * w + x + p0.x as usize] as f32,
-                        raw[(y - p1.y as usize) * w + x + p1.x as usize] as f32,
+                        raw[(y as f32 + p0.y) as usize * w + (x as f32 + p0.x) as usize] as f32,
+                        raw[(y as f32 + p1.y) as usize * w + (x as f32 + p1.x) as usize] as f32,
                     ));
                     if crf < self.threshold {
                         break;
@@ -114,6 +116,10 @@ impl KeypointDetector for FASTCornerDetector {
                     key_points.push(KeyPoint::new(x, y, crf, level));
                 }
             }
+        }
+        if self.use_nms {
+            let key_points = nms(&key_points, self.radius * 2 + 1);
+            return key_points;
         }
         key_points
     }
@@ -126,7 +132,7 @@ mod tests {
 
     #[test]
     fn fast_detect() {
-        let fast = FASTCornerDetector::new(3, 10.0f32, 1);
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
         let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
             if (x < 16) && (y >= 16) {
                 image::Luma([255u8])
@@ -155,6 +161,65 @@ mod tests {
     }
 
     #[test]
+    fn fast_detect2() {
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
+            if (x >= 16) && (y >= 16) {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+
+        let key_points = fast.detect(&img, 0);
+        assert_eq!(key_points.len(), 8, "{:?}", key_points);
+        assert_eq!(key_points[0].loc.x as usize, 16);
+        assert_eq!(key_points[0].loc.y as usize, 16);
+        assert_eq!(key_points[1].loc.x as usize, 17);
+        assert_eq!(key_points[1].loc.y as usize, 16);
+        assert_eq!(key_points[2].loc.x as usize, 18);
+        assert_eq!(key_points[2].loc.y as usize, 16);
+        assert_eq!(key_points[3].loc.x as usize, 16);
+        assert_eq!(key_points[3].loc.y as usize, 17);
+        assert_eq!(key_points[4].loc.x as usize, 17);
+        assert_eq!(key_points[4].loc.y as usize, 17);
+        assert_eq!(key_points[5].loc.x as usize, 18);
+        assert_eq!(key_points[5].loc.y as usize, 17);
+        assert_eq!(key_points[6].loc.x as usize, 16);
+        assert_eq!(key_points[6].loc.y as usize, 18);
+        assert_eq!(key_points[7].loc.x as usize, 17);
+        assert_eq!(key_points[7].loc.y as usize, 18);
+    }
+
+    #[test]
+    fn fast_detect3() {
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
+            if (x < 16) && (y < 16) {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+        let key_points = fast.detect(&img, 0);
+        assert_eq!(key_points.len(), 8, "{:?}", key_points);
+    }
+
+    #[test]
+    fn fast_detect4() {
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
+            if (x >= 16) && (y < 16) {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+        let key_points = fast.detect(&img, 0);
+        assert_eq!(key_points.len(), 8, "{:?}", key_points);
+    }
+
+    #[test]
     fn test_clac_crf() {
         assert_eq!(calc_crf(0.0, 1.0, -1.0), 2.0);
         assert_eq!(calc_crf(1.0, 1.0, -1.0), 4.0);
@@ -163,7 +228,7 @@ mod tests {
 
     #[test]
     fn fast3() {
-        let fast3 = FASTCornerDetector::new(3, 10.0f32, 1);
+        let fast3 = FASTCornerDetector::new(3, 10.0f32, 1, false);
         assert_eq!(fast3.circle_points.len(), 16);
         assert!((fast3.circle_points[0].x - 3.0f32).abs() < 1e-5);
         assert!((fast3.circle_points[0].y - 0.0f32).abs() < 1e-5);
@@ -192,7 +257,7 @@ mod tests {
 
     #[test]
     fn fast5() {
-        let fast5 = FASTCornerDetector::new(5, 10.0f32, 1);
+        let fast5 = FASTCornerDetector::new(5, 10.0f32, 1, false);
         assert_eq!(fast5.circle_points.len(), 28);
 
         assert!((fast5.circle_points[0].x - 5.0f32).abs() < 1e-5);
@@ -221,5 +286,26 @@ mod tests {
 
         assert!((fast5.circle_points[8].x + 1.0f32).abs() < 1e-5);
         assert!((fast5.circle_points[8].y - 5.0f32).abs() < 1e-5);
+
+        for i in 0..14 {
+            let p0 = fast5.circle_points[i];
+            let p1 = fast5.circle_points[14 + i];
+            assert!((p0.x + p1.x).abs() < 1e-5);
+            assert!((p0.y + p1.y).abs() < 1e-5);
+        }
+    }
+
+    #[test]
+    fn fast9() {
+        let fast9 = FASTCornerDetector::new(9, 10.0f32, 1, false);
+        let n_pts = fast9.circle_points.len();
+        let n_half = n_pts / 2;
+
+        for i in 0..n_half {
+            let p0 = fast9.circle_points[i];
+            let p1 = fast9.circle_points[n_half + i];
+            assert!((p0.x + p1.x).abs() < 1e-5);
+            assert!((p0.y + p1.y).abs() < 1e-5);
+        }
     }
 }

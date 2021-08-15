@@ -27,3 +27,11 @@ debug = true
 [[bench]]
 name = "image_access"
 harness = false
+
+[[example]]
+name = "fast_detect"
+path = "examples/feat/fast_detect.rs"
+
+[[example]]
+name = "fast_matching"
+path = "examples/feat/fast_matching.rs"
