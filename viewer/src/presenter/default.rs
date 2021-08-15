@@ -5,65 +5,54 @@ use sdl2::event::Event;
 
 use crate::{
     image_manager::ImageManager,
-    presenter::create_frame_buffer,
     shader::{self, Shader},
-    vertex::{self, Vertex},
 };
 
-use super::{delete_fbo, Presenter};
+use super::{Presenter, PresenterMode};
+
+const SHADER_LIST: [&str; 1] = ["default"];
+const POINTS_SHADER_LIST: [&str; 1] = ["points"];
 
 const DEFAULT_SHADER_KEY: &str = "default";
+const DEFAULT_POINTS_SHADER_KEY: &str = "points";
 
 /// Presenter of MVP architecture.
 /// This class holds frame buffer object for off-screen rendering.
-pub struct DefaultPresenter {
-    frame_buffer_id: u32,
-    depth_buffer_id: u32,
-    color_buffer_id: u32,
-    fbo_width: u32,
-    fbo_height: u32,
-    fbo_vertex: Vertex,
+pub struct DefaultPresenterMode {
     shader_map: HashMap<String, Shader>,
+    points_shader_map: HashMap<String, Shader>,
     current_shader_key: String,
-    points_shader: Shader,
+    current_image_key: String,
+    current_points_shader_key: String,
 }
 
-impl DefaultPresenter {
-    pub fn new(width: u32, height: u32) -> DefaultPresenter {
-        let fbo_vertex = vertex::create_simple_vertex();
-        let shader_map = shader::load_shaders();
-        let current_shader_key = DEFAULT_SHADER_KEY.to_string();
-        let (frame_buffer_id, depth_buffer_id, color_buffer_id) =
-            create_frame_buffer(width, height);
-        let points_shader = Shader::new("points");
+impl DefaultPresenterMode {
+    pub const MODE_NAME: &'static str = "default";
 
-        println!("current_shader_key = {}", current_shader_key);
-        DefaultPresenter {
-            frame_buffer_id,
-            depth_buffer_id,
-            color_buffer_id,
-            fbo_width: width,
-            fbo_height: height,
-            fbo_vertex,
+    pub fn new() -> Self {
+        let shader_map = shader::load_shaders(&SHADER_LIST.to_vec());
+        let points_shader_map = shader::load_shaders(&POINTS_SHADER_LIST.to_vec());
+        let current_shader_key = DEFAULT_SHADER_KEY.to_string();
+        let current_image_key = "".to_string();
+        let current_points_shader_key = DEFAULT_POINTS_SHADER_KEY.to_string();
+        DefaultPresenterMode {
             shader_map,
+            points_shader_map,
             current_shader_key,
-            points_shader,
+            current_image_key,
+            current_points_shader_key,
         }
     }
-
-    fn get_current_shader(&self) -> &Shader {
-        self.shader_map.get_mut(&self.current_shader_key).unwrap()
-    }
 }
 
-impl Presenter for DefaultPresenter {
-    fn get_texture_id(&self) -> u32 {
-        self.color_buffer_id
+impl PresenterMode for DefaultPresenterMode {
+    fn get_mode_name(&self) -> &str {
+        &Self::MODE_NAME
     }
 
-    fn process_event(&mut self, event: &Event) -> bool {
-        // let current_shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
-        let current_shader = self.get_current_shader();
+    fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool {
+        let current_shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
+        // let current_shader = self.get_current_shader();
         let processed = match event {
             Event::MouseWheel {
                 timestamp,
@@ -87,8 +76,8 @@ impl Presenter for DefaultPresenter {
             } => {
                 // 左上(0, 0), 右下(width, height)の座標系を
                 // 中心(0, 0), 左上(-1.0, 1.0), 右下(1.0, -1.0)の座標系に変換する
-                let fx = *x as f32 / self.fbo_width as f32 * 2.0f32 - 1.0f32;
-                let fy = 1.0f32 - *y as f32 / self.fbo_height as f32 * 2.0f32;
+                let fx = *x as f32 / fbo_width as f32 * 2.0f32 - 1.0f32;
+                let fy = 1.0f32 - *y as f32 / fbo_height as f32 * 2.0f32;
                 current_shader
                     .on_mouse_button_down(timestamp, window_id, which, mouse_btn, clicks, fx, fy);
                 true
@@ -116,8 +105,8 @@ impl Presenter for DefaultPresenter {
                 xrel,
                 yrel,
             } => {
-                let dx = *xrel as f32 / self.fbo_width as f32 * 2.0f32;
-                let dy = -*yrel as f32 / self.fbo_height as f32 * 2.0f32;
+                let dx = *xrel as f32 / fbo_width as f32 * 2.0f32;
+                let dy = -*yrel as f32 / fbo_height as f32 * 2.0f32;
                 current_shader
                     .on_mouse_motion_event(timestamp, window_id, which, mousestate, x, y, dx, dy);
                 true
@@ -127,32 +116,33 @@ impl Presenter for DefaultPresenter {
         processed
     }
 
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
-        if (width != self.fbo_width) || (height != self.fbo_height) {
-            delete_fbo(
-                self.frame_buffer_id,
-                self.depth_buffer_id,
-                self.color_buffer_id,
-            );
-            let (fbi, dbi, cbi) = create_frame_buffer(width, height);
-            self.frame_buffer_id = fbi;
-            self.depth_buffer_id = dbi;
-            self.color_buffer_id = cbi;
-            self.fbo_width = width;
-            self.fbo_height = height;
+    fn draw(
+        &mut self,
+        width: u32,
+        height: u32,
+        image_manager: &ImageManager,
+        presenter: &Presenter,
+    ) {
+        if self.current_image_key.len() == 0 {
+            return;
         }
+        let image_texture_id = image_manager.get_texture_id(&self.current_image_key);
+        let (image_width, image_height) =
+            image_manager.get_texture_image_size(&self.current_image_key);
 
-        let image_texture_id = image_manager.get_current_texture_id();
-        let (image_width, image_height) = image_manager.get_current_texture_image_size();
-        let shader = self.get_current_shader();
+        let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
         shader.adjust_aspect_ratio(image_width, image_height, width, height);
         let shader_id = shader.get_shader_id();
 
-        let points_vertex = image_manager.get_current_points_vertex();
-        let points_shader_id = self.points_shader.get_shader_id();
+        let points_vertex = image_manager.get_points_vertex(&self.current_image_key);
+        let points_shader_id = self
+            .points_shader_map
+            .get(&self.current_points_shader_key)
+            .unwrap()
+            .get_shader_id();
 
         unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
+            gl::BindFramebuffer(gl::FRAMEBUFFER, presenter.get_frame_buffer_id());
             gl::Enable(gl::PROGRAM_POINT_SIZE);
 
             gl::Viewport(0, 0, width as i32, height as i32);
@@ -163,7 +153,7 @@ impl Presenter for DefaultPresenter {
             shader.set_uniform_variables(shader_id, false);
 
             gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
-            self.fbo_vertex.draw();
+            presenter.get_fbo_vertex().draw();
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
             if let Some(pts_vtx) = points_vertex {
@@ -177,7 +167,7 @@ impl Presenter for DefaultPresenter {
     }
 
     fn draw_imgui(&mut self, ui: &imgui::Ui) {
-        let shader = self.get_current_shader();
+        let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
         imgui::Window::new(im_str!("Parameters"))
             .size([200.0, 250.0], imgui::Condition::FirstUseEver)
             .position([700.0, 10.0], imgui::Condition::FirstUseEver)
@@ -191,18 +181,5 @@ impl Presenter for DefaultPresenter {
                     .build(&ui, &mut shader.point_size.value);
                 ui.separator();
             });
-    }
-}
-
-impl Drop for DefaultPresenter {
-    fn drop(&mut self) {
-        delete_fbo(
-            self.frame_buffer_id,
-            self.depth_buffer_id,
-            self.color_buffer_id,
-        );
-        self.frame_buffer_id = 0;
-        self.depth_buffer_id = 0;
-        self.color_buffer_id = 0;
     }
 }

@@ -90,14 +90,14 @@ struct PointRelation {
 /// 画像は左下が原点(pointerの開始地点)になるように、適当にflipする
 pub struct ImageManager {
     images: HashMap<String, Image>,
-    current_image_key: String,
+    is_build: bool,
 }
 
 impl ImageManager {
     pub fn new() -> ImageManager {
         let image_manager = ImageManager {
             images: HashMap::new(),
-            current_image_key: "".to_string(),
+            is_build: false,
         };
         image_manager
     }
@@ -121,9 +121,6 @@ impl ImageManager {
                 id
             );
             return;
-        }
-        if self.current_image_key.len() == 0 {
-            self.current_image_key = id.clone();
         }
         let format = match image {
             image::DynamicImage::ImageLuma8(_) => gl::RED,
@@ -164,26 +161,25 @@ impl ImageManager {
             .insert(id, Image::new(texture, image.width(), image.height()));
     }
 
-    pub fn get_current_texture_id(&self) -> u32 {
-        match self.images.get(&self.current_image_key) {
+    pub fn get_texture_id(&self, key: &str) -> u32 {
+        match self.images.get(key) {
             Some(image) => image.image_texture_id,
             None => 0,
         }
     }
 
-    pub fn get_current_texture_image_size(&self) -> (u32, u32) {
-        match self.images.get(&self.current_image_key) {
+    pub fn get_texture_image_size(&self, key: &str) -> (u32, u32) {
+        match self.images.get(key) {
             Some(image) => (image.width, image.height),
             None => (1u32, 1u32),
         }
     }
 
-    pub fn get_current_points_vertex(&self) -> &Option<Vertex> {
-        &self
-            .images
-            .get(&self.current_image_key)
-            .unwrap()
-            .points_vertex
+    pub fn get_points_vertex(&self, key: &str) -> &Option<Vertex> {
+        if !self.is_build {
+            warn!("`ImageManager` has not been built. `build_points_vertex` should be called.")
+        }
+        &self.images.get(key).unwrap().points_vertex
     }
 
     /// add point (`x`, `y`, `z`) to image of `image_id`.
@@ -201,6 +197,7 @@ impl ImageManager {
         self.images
             .iter_mut()
             .for_each(|(_, image)| image.build_points_vertex());
+        self.is_build = true;
         self
     }
 }

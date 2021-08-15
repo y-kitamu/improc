@@ -8,8 +8,8 @@ use imgui::im_str;
 use log::info;
 use sdl2::{event::Event, keyboard::Keycode, Sdl, VideoSubsystem};
 
-use crate::vertex::Vertex;
 use crate::{image_manager::ImageManager, presenter::Presenter};
+use crate::{presenter::PresenterMode, vertex::Vertex};
 use crate::{shader::Shader, vertex};
 
 #[derive(Debug)]
@@ -65,7 +65,6 @@ impl Viewer {
             self.video_subsystem.gl_get_proc_address(s) as _
         });
 
-        println!("image : {}", image_manager.get_current_texture_id());
         let mut event_pump = self.sdl_context.event_pump().unwrap();
         'running: loop {
             for event in event_pump.poll_iter() {

@@ -1,9 +1,28 @@
 use std::ops::Deref;
 
 use image::{ColorType, ImageBuffer, Pixel};
+use nalgebra::Matrix2x3;
 use num_traits::ToPrimitive;
 
-use super::KeyPoint;
+use super::{linalg::inv_affine_mat, KeyPoint};
+
+/// affine transformation (linear interpolation)
+pub fn affine_transform<P, Container>(
+    img: &ImageBuffer<P, Container>,
+    affine_mat: &Matrix2x3<f32>,
+) -> Vec<u8>
+where
+    P: Pixel + 'static,
+    P::Subpixel: 'static,
+    Container: Deref<Target = [P::Subpixel]>,
+{
+    let inv_affine_mat = inv_affine_mat(&affine_mat);
+
+    let data = img.as_raw();
+    let transformed: Vec<u8> = Vec::with_capacity(data.len());
+
+    transformed
+}
 
 /// Non-Maximum Supression (NMS)
 // とりあえず、O(n^2)で実装してみて高速化を検討する

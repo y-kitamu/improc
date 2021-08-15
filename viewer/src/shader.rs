@@ -17,11 +17,9 @@ type Vector3 = cgmath::Vector3<f32>;
 #[allow(dead_code)]
 type Matrix4 = cgmath::Matrix4<f32>;
 
-const SHADER_LIST: [&str; 1] = ["default"];
-
-pub fn load_shaders() -> HashMap<String, Shader> {
+pub fn load_shaders(shader_list: &Vec<&str>) -> HashMap<String, Shader> {
     let mut shader_map = HashMap::<String, Shader>::new();
-    SHADER_LIST.iter().for_each(|key| {
+    shader_list.iter().for_each(|key| {
         let shader = Shader::new(&key);
         shader_map.insert(key.to_string(), shader);
     });

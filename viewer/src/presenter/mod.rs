@@ -1,58 +1,144 @@
 mod default;
 mod dual;
 
-use std::ptr;
+use std::{collections::HashMap, ptr};
 
 use sdl2::event::Event;
 
-use crate::image_manager::ImageManager;
+use crate::{
+    image_manager::ImageManager,
+    vertex::{self, Vertex},
+};
 
-trait Presenter {
+use self::{default::DefaultPresenterMode, dual::DualImagePresenter};
+
+pub trait PresenterMode {
+    fn get_mode_name(&self) -> &str;
+
     /// process user action event, and return whether event is processed.
-    fn process_event(&mut self, event: &Event) -> bool;
+    fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool;
 
     /// draw images and points to frame buffer object for off screen rendering
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager);
+    fn draw(
+        &mut self,
+        width: u32,
+        height: u32,
+        image_manager: &ImageManager,
+        presenter: &Presenter,
+    );
 
     /// draw imgui object to screen (not frame buffer object)
     fn draw_imgui(&mut self, ui: &imgui::Ui);
-
-    fn get_texture_id(&self) -> u32;
 }
 
-enum PresenterModes {
-    Default(default::DefaultPresenter),
-    Dual(dual::DualImagePresenter),
+pub struct Presenter {
+    modes: HashMap<String, Box<dyn PresenterMode>>,
+    current_modes_key: String,
+    frame_buffer_id: u32,
+    depth_buffer_id: u32,
+    color_buffer_id: u32,
+    fbo_width: u32,
+    fbo_height: u32,
+    fbo_vertex: Vertex,
 }
 
-// TODO: use macro
-impl Presenter for PresenterModes {
-    fn process_event(&mut self, event: &Event) -> bool {
-        match self {
-            Self::Default(presenter) => presenter.process_event(event),
-            Self::Dual(presenter) => presenter.process_event(event),
-        }
+impl Presenter {
+    const MODE_NAME: &'static str = "Presenter";
+
+    pub fn new(width: u32, height: u32) -> Self {
+        let fbo_vertex = vertex::create_simple_vertex();
+        let (frame_buffer_id, depth_buffer_id, color_buffer_id) =
+            create_frame_buffer(width, height);
+        let mut presenter = Presenter {
+            modes: HashMap::new(),
+            current_modes_key: DefaultPresenterMode::MODE_NAME.to_string(),
+            frame_buffer_id,
+            depth_buffer_id,
+            color_buffer_id,
+            fbo_width: width,
+            fbo_height: height,
+            fbo_vertex,
+        };
+
+        let default_mode = Box::new(DefaultPresenterMode::new());
+        presenter
+            .modes
+            .insert(default_mode.get_mode_name().to_string(), default_mode);
+
+        let dual_mode = Box::new(DualImagePresenter::new());
+        presenter
+            .modes
+            .insert(dual_mode.get_mode_name().to_string(), dual_mode);
+
+        presenter
     }
 
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
-        match self {
-            Self::Default(presenter) => presenter.draw(width, height, image_manager),
-            Self::Dual(presenter) => presenter.draw(width, height, image_manager),
-        }
+    pub fn get_texture_id(&self) -> u32 {
+        self.color_buffer_id
     }
 
-    fn draw_imgui(&mut self, ui: &imgui::Ui) {
-        match self {
-            Self::Default(presenter) => presenter.draw_imgui(ui),
-            Self::Dual(presenter) => presenter.draw_imgui(ui),
-        }
+    pub fn get_fbo_size(&self) -> (u32, u32) {
+        (self.fbo_width, self.fbo_height)
     }
 
-    fn get_texture_id(&self) -> u32 {
-        match self {
-            Self::Default(presenter) => presenter.get_texture_id(),
-            Self::Dual(presenter) => presenter.get_texture_id(),
+    pub fn get_fbo_vertex(&self) -> &Vertex {
+        &self.fbo_vertex
+    }
+
+    pub fn get_frame_buffer_id(&self) -> u32 {
+        self.frame_buffer_id
+    }
+
+    pub fn update_window_size(&mut self, width: u32, height: u32) {
+        if (width != self.fbo_width) || (height != self.fbo_height) {
+            delete_fbo(
+                self.frame_buffer_id,
+                self.depth_buffer_id,
+                self.color_buffer_id,
+            );
+            let (fbi, dbi, cbi) = create_frame_buffer(width, height);
+            self.frame_buffer_id = fbi;
+            self.depth_buffer_id = dbi;
+            self.color_buffer_id = cbi;
+            self.fbo_width = width;
+            self.fbo_height = height;
         }
+    }
+}
+
+impl PresenterMode for Presenter {
+    fn get_mode_name(&self) -> &str {
+        Self::MODE_NAME
+    }
+
+    fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool {
+        let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
+        current_mode.process_event(event, fbo_width, fbo_height)
+    }
+
+    fn draw(
+        &mut self,
+        width: u32,
+        height: u32,
+        image_manager: &ImageManager,
+        presente: &Presenter,
+    ) {
+        self.update_window_size(width, height);
+    }
+
+    fn draw_imgui(&mut self, ui: &imgui::Ui) {}
+}
+
+impl Drop for Presenter {
+    fn drop(&mut self) {
+        delete_fbo(
+            self.frame_buffer_id,
+            self.depth_buffer_id,
+            self.color_buffer_id,
+        );
+        self.frame_buffer_id = 0;
+        self.depth_buffer_id = 0;
+        self.color_buffer_id = 0;
     }
 }
 
