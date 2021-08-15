@@ -43,6 +43,7 @@ impl DualImagePresenter {
         }
     }
 
+    // TODO: refactor. default.rsの`draw`とほぼおなじコード
     fn draw_half(
         &mut self,
         image_key: &str,
@@ -51,7 +52,6 @@ impl DualImagePresenter {
         width: u32,
         height: u32,
         image_manager: &ImageManager,
-        fbo_id: u32,
         fbo_vertex: &Vertex,
     ) {
         let image_texture_id = image_manager.get_texture_id(image_key);
@@ -96,25 +96,9 @@ impl PresenterMode for DualImagePresenter {
         false
     }
 
-    fn draw(
-        &mut self,
-        width: u32,
-        height: u32,
-        image_manager: &ImageManager,
-        fbo_id: u32,
-        fbo_vertex: &Vertex,
-    ) {
+    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager, fbo_vertex: &Vertex) {
         if self.current_image_keys.0.len() == 0 || self.current_image_keys.1.len() == 0 {
             return;
-        }
-
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, fbo_id);
-            gl::Enable(gl::PROGRAM_POINT_SIZE);
-
-            gl::Viewport(0, 0, width as i32, height as i32);
-            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
 
         let cur_img_key0 = self.current_image_keys.0.clone();
@@ -125,7 +109,6 @@ impl PresenterMode for DualImagePresenter {
             width / 2,
             height,
             image_manager,
-            fbo_id,
             fbo_vertex,
         );
         let cur_img_key1 = self.current_image_keys.0.clone();
@@ -136,14 +119,8 @@ impl PresenterMode for DualImagePresenter {
             width / 2,
             height,
             image_manager,
-            fbo_id,
             fbo_vertex,
         );
-
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-            gl::Viewport(0, 0, width as i32, height as i32);
-        }
     }
 
     fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {

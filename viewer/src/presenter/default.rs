@@ -117,14 +117,7 @@ impl PresenterMode for DefaultPresenterMode {
         processed
     }
 
-    fn draw(
-        &mut self,
-        width: u32,
-        height: u32,
-        image_manager: &ImageManager,
-        fbo_id: u32,
-        fbo_vertex: &Vertex,
-    ) {
+    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager, fbo_vertex: &Vertex) {
         if self.current_image_key.len() == 0 {
             return;
         }
@@ -144,13 +137,6 @@ impl PresenterMode for DefaultPresenterMode {
             .get_shader_id();
 
         unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, fbo_id);
-            gl::Enable(gl::PROGRAM_POINT_SIZE);
-
-            gl::Viewport(0, 0, width as i32, height as i32);
-            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-
             gl::UseProgram(shader_id);
             shader.set_uniform_variables(shader_id, false);
 
@@ -163,8 +149,6 @@ impl PresenterMode for DefaultPresenterMode {
                 shader.set_uniform_variables(points_shader_id, true);
                 pts_vtx.draw_points();
             }
-
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
     }
 

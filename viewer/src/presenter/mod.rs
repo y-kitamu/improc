@@ -20,14 +20,7 @@ pub trait PresenterMode {
     fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool;
 
     /// draw images and points to frame buffer object for off screen rendering
-    fn draw(
-        &mut self,
-        width: u32,
-        height: u32,
-        image_manager: &ImageManager,
-        fbo_id: u32,
-        fbo_vertex: &Vertex,
-    );
+    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager, fbo_vertex: &Vertex);
 
     /// draw imgui object to screen (not frame buffer object)
     fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager);
@@ -100,14 +93,20 @@ impl Presenter {
 
     pub fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
         self.update_window_size(width, height);
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
+            gl::Enable(gl::PROGRAM_POINT_SIZE);
+
+            gl::Viewport(0, 0, width as i32, height as i32);
+            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
-        current_mode.draw(
-            width,
-            height,
-            image_manager,
-            self.frame_buffer_id,
-            &self.fbo_vertex,
-        );
+        current_mode.draw(width, height, image_manager, &self.fbo_vertex);
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+            gl::Viewport(0, 0, width as i32, height as i32);
+        }
     }
 
     pub fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {
