@@ -100,7 +100,7 @@ impl Viewer {
             let ui = imgui_context.frame();
 
             self.draw_imgui(&ui); // 情報表示のみ
-            presenter.draw_imgui(&ui); // event取得
+            presenter.draw_imgui(&ui, &image_manager); // event取得
 
             imgui_sdl2_context.prepare_render(&ui, &self.window);
             renderer.render(ui);

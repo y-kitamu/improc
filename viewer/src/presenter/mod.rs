@@ -24,11 +24,12 @@ pub trait PresenterMode {
         width: u32,
         height: u32,
         image_manager: &ImageManager,
-        presenter: &Presenter,
+        fbo_id: u32,
+        fbo_vertex: &Vertex,
     );
 
     /// draw imgui object to screen (not frame buffer object)
-    fn draw_imgui(&mut self, ui: &imgui::Ui);
+    fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager);
 }
 
 pub struct Presenter {
@@ -43,8 +44,6 @@ pub struct Presenter {
 }
 
 impl Presenter {
-    const MODE_NAME: &'static str = "Presenter";
-
     pub fn new(width: u32, height: u32) -> Self {
         let fbo_vertex = vertex::create_simple_vertex();
         let (frame_buffer_id, depth_buffer_id, color_buffer_id) =
@@ -77,18 +76,6 @@ impl Presenter {
         self.color_buffer_id
     }
 
-    pub fn get_fbo_size(&self) -> (u32, u32) {
-        (self.fbo_width, self.fbo_height)
-    }
-
-    pub fn get_fbo_vertex(&self) -> &Vertex {
-        &self.fbo_vertex
-    }
-
-    pub fn get_frame_buffer_id(&self) -> u32 {
-        self.frame_buffer_id
-    }
-
     pub fn update_window_size(&mut self, width: u32, height: u32) {
         if (width != self.fbo_width) || (height != self.fbo_height) {
             delete_fbo(
@@ -104,29 +91,28 @@ impl Presenter {
             self.fbo_height = height;
         }
     }
-}
 
-impl PresenterMode for Presenter {
-    fn get_mode_name(&self) -> &str {
-        Self::MODE_NAME
-    }
-
-    fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool {
+    pub fn process_event(&mut self, event: &Event) -> bool {
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
-        current_mode.process_event(event, fbo_width, fbo_height)
+        current_mode.process_event(event, self.fbo_width, self.fbo_height)
     }
 
-    fn draw(
-        &mut self,
-        width: u32,
-        height: u32,
-        image_manager: &ImageManager,
-        presente: &Presenter,
-    ) {
+    pub fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
         self.update_window_size(width, height);
+        let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
+        current_mode.draw(
+            width,
+            height,
+            image_manager,
+            self.frame_buffer_id,
+            &self.fbo_vertex,
+        );
     }
 
-    fn draw_imgui(&mut self, ui: &imgui::Ui) {}
+    pub fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {
+        let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
+        current_mode.draw_imgui(ui, image_manager);
+    }
 }
 
 impl Drop for Presenter {

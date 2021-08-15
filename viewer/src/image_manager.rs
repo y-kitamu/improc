@@ -9,7 +9,7 @@ use log::warn;
 
 use crate::vertex::Vertex;
 
-struct Image {
+pub struct Image {
     image_texture_id: u32,
     width: u32,
     height: u32,
@@ -159,6 +159,10 @@ impl ImageManager {
         println!("Finish register image : id = {}, index = {}", id, texture);
         self.images
             .insert(id, Image::new(texture, image.width(), image.height()));
+    }
+
+    pub fn get_image_keys(&self) -> std::collections::hash_map::Keys<String, Image> {
+        self.images.keys()
     }
 
     pub fn get_texture_id(&self, key: &str) -> u32 {

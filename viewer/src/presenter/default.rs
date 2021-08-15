@@ -6,6 +6,7 @@ use sdl2::event::Event;
 use crate::{
     image_manager::ImageManager,
     shader::{self, Shader},
+    vertex::Vertex,
 };
 
 use super::{Presenter, PresenterMode};
@@ -121,7 +122,8 @@ impl PresenterMode for DefaultPresenterMode {
         width: u32,
         height: u32,
         image_manager: &ImageManager,
-        presenter: &Presenter,
+        fbo_id: u32,
+        fbo_vertex: &Vertex,
     ) {
         if self.current_image_key.len() == 0 {
             return;
@@ -142,7 +144,7 @@ impl PresenterMode for DefaultPresenterMode {
             .get_shader_id();
 
         unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, presenter.get_frame_buffer_id());
+            gl::BindFramebuffer(gl::FRAMEBUFFER, fbo_id);
             gl::Enable(gl::PROGRAM_POINT_SIZE);
 
             gl::Viewport(0, 0, width as i32, height as i32);
@@ -153,7 +155,7 @@ impl PresenterMode for DefaultPresenterMode {
             shader.set_uniform_variables(shader_id, false);
 
             gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
-            presenter.get_fbo_vertex().draw();
+            fbo_vertex.draw();
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
             if let Some(pts_vtx) = points_vertex {
@@ -166,16 +168,24 @@ impl PresenterMode for DefaultPresenterMode {
         }
     }
 
-    fn draw_imgui(&mut self, ui: &imgui::Ui) {
-        let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
+    fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {
         imgui::Window::new(im_str!("Parameters"))
             .size([200.0, 250.0], imgui::Condition::FirstUseEver)
             .position([700.0, 10.0], imgui::Condition::FirstUseEver)
             .build(ui, || {
                 ui.text(im_str!("Image parameter"));
                 ui.separator();
+
+                for key in image_manager.get_image_keys() {
+                    let mut flag = self.current_image_key == *key;
+                    if ui.radio_button(&im_str!("{}", key), &mut flag, true) {
+                        self.current_image_key = key.clone();
+                    }
+                }
+
                 ui.separator();
                 ui.text(im_str!("Point parameter"));
+                let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
                 imgui::Slider::new(im_str!("Point size"))
                     .range(1.0..=100.0)
                     .build(&ui, &mut shader.point_size.value);
