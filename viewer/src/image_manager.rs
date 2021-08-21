@@ -63,7 +63,7 @@ pub struct Color {
 
 /// 点情報を保持する
 /// locには画像の中心を原点(0, 0)、右上を(1, 1)とした座標系での値を保持する。
-struct Point {
+pub struct Point {
     loc: Point3<f32>,
     color: Color,
 }
@@ -81,7 +81,7 @@ impl Point {
     }
 }
 
-struct PointRelation {
+pub struct PointRelation {
     locs: Vec<Point3<f32>>,
     ids: Vec<String>,
 }
@@ -139,8 +139,8 @@ impl ImageManager {
             gl::BindTexture(gl::TEXTURE_2D, texture);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
 
             gl::TexImage2D(
                 gl::TEXTURE_2D,
