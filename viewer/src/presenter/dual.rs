@@ -5,25 +5,27 @@ use sdl2::{event::Event, sys::SDL_GetMouseState};
 
 use crate::{
     image_manager::ImageManager,
-    shader::{self, Shader},
+    shader::{image_shader::ImageShader, line_shader::LineShader, point_shader::PointShader},
     vertex::Vertex,
 };
 
-use super::{Presenter, PresenterMode};
+use super::PresenterMode;
 
 const SHADER_LIST: [&str; 1] = ["default"];
 const POINTS_SHADER_LIST: [&str; 1] = ["points"];
 
 const DEFAULT_SHADER_KEY: &str = "default";
 const DEFAULT_POINTS_SHADER_KEY: &str = "points";
+const DEFAULT_LINE_SHADER_KEY: &str = "line";
 
 pub struct DualImagePresenter {
-    shader_map_left: HashMap<String, Shader>,
-    shader_map_right: HashMap<String, Shader>,
-    points_shader_map: HashMap<String, Shader>,
+    shader_map_left: HashMap<String, ImageShader>,
+    shader_map_right: HashMap<String, ImageShader>,
+    points_shader_map: HashMap<String, PointShader>,
     current_shader_key: String,
     current_image_keys: (String, String),
     current_points_shader_key: String,
+    point_relation_shader: LineShader,
 }
 
 fn get_mouse_pos() -> (u32, u32) {
@@ -37,12 +39,13 @@ impl DualImagePresenter {
     const MODE_NAME: &'static str = "dual";
 
     pub fn new() -> Self {
-        let shader_map_left = shader::load_shaders(&SHADER_LIST.to_vec());
-        let shader_map_right = shader::load_shaders(&SHADER_LIST.to_vec());
-        let points_shader_map = shader::load_shaders(&POINTS_SHADER_LIST.to_vec());
+        let shader_map_left = load_shaders!(SHADER_LIST, ImageShader);
+        let shader_map_right = load_shaders!(SHADER_LIST, ImageShader);
+        let points_shader_map = load_shaders!(POINTS_SHADER_LIST, PointShader);
         let current_shader_key = DEFAULT_SHADER_KEY.to_string();
         let current_image_keys = ("".to_string(), "".to_string());
         let current_points_shader_key = DEFAULT_POINTS_SHADER_KEY.to_string();
+        let point_relation_shader = LineShader::new(DEFAULT_LINE_SHADER_KEY);
         DualImagePresenter {
             shader_map_left,
             shader_map_right,
@@ -50,6 +53,7 @@ impl DualImagePresenter {
             current_shader_key,
             current_image_keys,
             current_points_shader_key,
+            point_relation_shader,
         }
     }
 
@@ -77,34 +81,29 @@ impl DualImagePresenter {
                 .unwrap()
         };
         shader.adjust_aspect_ratio(image_width, image_height, width, height);
-        let shader_id = shader.get_shader_id();
 
-        let points_vertex = image_manager.get_points_vertex(image_key);
-        let points_shader_id = self
+        let pts_vertex = image_manager.get_points_vertex(image_key);
+        let pts_shader = self
             .points_shader_map
             .get(&self.current_points_shader_key)
-            .unwrap()
-            .get_shader_id();
+            .unwrap();
 
         unsafe {
             gl::Viewport(left as i32, top as i32, width as i32, height as i32);
 
-            gl::UseProgram(shader_id);
-            shader.set_uniform_variables(shader_id, false);
-
+            shader.set_uniform_variables();
             gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
             fbo_vertex.draw();
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
-            if let Some(pts_vtx) = points_vertex {
-                gl::UseProgram(points_shader_id);
-                shader.set_uniform_variables(points_shader_id, true);
+            if let Some(pts_vtx) = pts_vertex {
+                pts_shader.set_uniform_variables(&shader);
                 pts_vtx.draw_points();
             }
         }
     }
 
-    fn get_current_shader(&mut self, fbo_width: u32) -> &mut Shader {
+    fn get_current_shader(&mut self, fbo_width: u32) -> &mut ImageShader {
         let (x, y) = get_mouse_pos();
         let current_shader = if x < fbo_width / 2 {
             self.shader_map_left
@@ -212,7 +211,7 @@ impl PresenterMode for DualImagePresenter {
             image_manager,
             fbo_vertex,
         );
-        let cur_img_key1 = self.current_image_keys.0.clone();
+        let cur_img_key1 = self.current_image_keys.1.clone();
         self.draw_half(
             &cur_img_key1,
             width / 2,
@@ -222,6 +221,20 @@ impl PresenterMode for DualImagePresenter {
             image_manager,
             fbo_vertex,
         );
+
+        // draw line
+        let lhs_img_shader = self.shader_map_left.get(&self.current_shader_key).unwrap();
+        let rhs_img_shader = self.shader_map_right.get(&self.current_shader_key).unwrap();
+        let line_vertex = image_manager.get_point_relation(&cur_img_key0, &cur_img_key1);
+        unsafe {
+            gl::Viewport(0, 0, width as i32, height as i32);
+            self.point_relation_shader
+                .set_uniform_variables(lhs_img_shader, rhs_img_shader);
+            if let Some(lvtx) = line_vertex {
+                lvtx.draw_lines();
+            }
+            gl::UseProgram(0);
+        }
     }
 
     fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {
@@ -246,22 +259,17 @@ impl PresenterMode for DualImagePresenter {
 
                 ui.separator();
                 ui.text(im_str!("Point parameter"));
-                let lshader = self
-                    .shader_map_left
-                    .get_mut(&self.current_shader_key)
-                    .unwrap();
-                let rshader = self
-                    .shader_map_right
-                    .get_mut(&self.current_shader_key)
-                    .unwrap();
-                let mut point_size = lshader.point_size.value;
-                if imgui::Slider::new(im_str!("Point size"))
+                imgui::Slider::new(im_str!("Point size"))
                     .range(1.0..=100.0)
-                    .build(&ui, &mut point_size)
-                {
-                    lshader.point_size.value = point_size;
-                    rshader.point_size.value = point_size;
-                }
+                    .build(
+                        &ui,
+                        &mut self
+                            .points_shader_map
+                            .get_mut(&self.current_points_shader_key)
+                            .unwrap()
+                            .point_size
+                            .value,
+                    );
                 ui.separator();
             });
     }

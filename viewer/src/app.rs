@@ -4,11 +4,7 @@ use cgmath::Point3;
 use image::DynamicImage;
 use sdl2::sys::SDL_SetWindowResizable;
 
-use crate::{
-    image_manager::{Color, ImageManager},
-    presenter::Presenter,
-    viewer::Viewer,
-};
+use crate::{image_manager::ImageManager, presenter::Presenter, viewer::Viewer};
 
 /// User interface of the image viewer app.
 /// This struct prepare `Viewer`, `Presenter` and `ImageManager` to render images and widgets.
@@ -54,7 +50,7 @@ impl App {
 
     /// Start rendering images and widgets
     pub fn run(mut self) -> Result<()> {
-        self.image_manager = self.image_manager.build_points_vertex();
+        self.image_manager = self.image_manager.build();
         self.viewer.render(self.presenter, self.image_manager)
     }
 
@@ -100,11 +96,15 @@ impl App {
 
     pub fn add_point_relation(
         mut self,
-        points: &Vec<Point3<f32>>,
-        image_ids: &Vec<String>,
+        lhs_key: &str,
+        lx: f32,
+        ly: f32,
+        rhs_key: &str,
+        rx: f32,
+        ry: f32,
     ) -> Self {
-        assert_eq!(points.len(), image_ids.len());
-        self.image_manager.add_point_relation();
+        self.image_manager
+            .add_point_relation(lhs_key, lx, ly, rhs_key, rx, ry);
         self
     }
 
@@ -114,8 +114,22 @@ impl App {
         image_ids: &Vec<Vec<String>>,
     ) -> Self {
         assert_eq!(points.len(), image_ids.len());
-        for i in 0..points.len() {
-            self = self.add_point_relation(points.get(i).unwrap(), image_ids.get(i).unwrap());
+        for (pts, ids) in points.iter().zip(image_ids) {
+            assert_eq!(pts.len(), ids.len());
+            for i in 0..(pts.len()) {
+                for j in (i + 1)..(pts.len()) {
+                    let lpt = pts.get(i).unwrap();
+                    let rpt = pts.get(j).unwrap();
+                    self = self.add_point_relation(
+                        ids.get(i).unwrap(),
+                        lpt.x,
+                        lpt.y,
+                        ids.get(j).unwrap(),
+                        rpt.x,
+                        rpt.y,
+                    );
+                }
+            }
         }
         self
     }

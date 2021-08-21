@@ -30,19 +30,15 @@ fn main() {
     let app = viewer::app::App::new(1280, 960).unwrap();
     image = image.flipv();
     println!("image_size = {}, {}", image.width(), image.height());
-    let mut app = app.add_image(&image, "default");
+    let mut app = app.add_image(&image, "default").add_image(&image, "other");
     println!("feats num = {}", feats.len());
     app = feats.iter().fold(app, |ap, feat| {
         // println!("(x, y) = {}, {}", feat.x(), feat.y());
-        ap.add_point(
-            "default",
-            feat.x() / image.width() as f32 * 2.0 - 1.0,
-            1.0 - feat.y() / image.height() as f32 * 2.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0,
-        )
+        let px = feat.x() / image.width() as f32 * 2.0 - 1.0;
+        let py = 1.0 - feat.y() / image.height() as f32 * 2.0;
+        ap.add_point("default", px, py, 1.0, 1.0, 0.0, 0.0)
+            .add_point("other", px, py, 1.0, 1.0, 0.0, 0.0)
+            .add_point_relation("default", px, py, "other", px, py)
     });
     app.run().unwrap();
 }

@@ -3,12 +3,24 @@ use std::os::raw::c_void;
 
 use gl::types::{GLenum, GLfloat, GLint, GLsizei, GLsizeiptr};
 
+/// OpenGL描画のためのvertex情報(vao, vbo)を保持するstruct.
+/// `Vertex::new`で頂点情報を登録する.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct Vertex {
     vao: u32,
     vbo: u32,
     vertex_num: i32,
+}
+
+macro_rules! draw {
+    ($i:ident, $p:path) => {
+        unsafe {
+            gl::BindVertexArray($i.vao);
+            gl::DrawArrays($p, 0, $i.vertex_num);
+            gl::BindVertexArray(0);
+        }
+    };
 }
 
 // 画像描画用のvertex作成
@@ -81,18 +93,14 @@ impl Vertex {
     }
 
     pub fn draw(&self) {
-        unsafe {
-            gl::BindVertexArray(self.vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, self.vertex_num);
-            gl::BindVertexArray(0);
-        }
+        draw!(self, gl::TRIANGLES);
     }
 
     pub fn draw_points(&self) {
-        unsafe {
-            gl::BindVertexArray(self.vao);
-            gl::DrawArrays(gl::POINTS, 0, self.vertex_num);
-            gl::BindVertexArray(0);
-        }
+        draw!(self, gl::POINTS);
+    }
+
+    pub fn draw_lines(&self) {
+        draw!(self, gl::LINES);
     }
 }

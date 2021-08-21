@@ -1,4 +1,4 @@
-#version 140
+#version 460
 
 in vec2 TexCoords;
 

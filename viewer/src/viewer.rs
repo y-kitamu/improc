@@ -8,9 +8,9 @@ use imgui::im_str;
 use log::info;
 use sdl2::{event::Event, keyboard::Keycode, Sdl, VideoSubsystem};
 
+use crate::vertex::Vertex;
 use crate::{image_manager::ImageManager, presenter::Presenter};
-use crate::{presenter::PresenterMode, vertex::Vertex};
-use crate::{shader::Shader, vertex};
+use crate::{shader::image_shader::ImageShader, vertex};
 
 #[derive(Debug)]
 struct ViewerError(String);
@@ -30,7 +30,7 @@ pub struct Viewer {
     window: sdl2::video::Window,
     _gl_context: sdl2::video::GLContext,
     screen_vertex: Vertex,
-    screen_shader: Shader,
+    screen_shader: ImageShader,
 }
 
 impl Viewer {
@@ -41,7 +41,7 @@ impl Viewer {
         gl_context: sdl2::video::GLContext,
     ) -> Viewer {
         let screen_vertex = vertex::create_simple_vertex();
-        let screen_shader = Shader::new("screen");
+        let screen_shader = ImageShader::new("screen");
 
         let viewer = Viewer {
             sdl_context,

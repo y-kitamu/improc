@@ -5,11 +5,11 @@ use sdl2::event::Event;
 
 use crate::{
     image_manager::ImageManager,
-    shader::{self, Shader},
+    shader::{image_shader::ImageShader, point_shader::PointShader},
     vertex::Vertex,
 };
 
-use super::{Presenter, PresenterMode};
+use super::PresenterMode;
 
 const SHADER_LIST: [&str; 1] = ["default"];
 const POINTS_SHADER_LIST: [&str; 1] = ["points"];
@@ -20,8 +20,8 @@ const DEFAULT_POINTS_SHADER_KEY: &str = "points";
 /// Presenter of MVP architecture.
 /// This class holds frame buffer object for off-screen rendering.
 pub struct DefaultPresenterMode {
-    shader_map: HashMap<String, Shader>,
-    points_shader_map: HashMap<String, Shader>,
+    shader_map: HashMap<String, ImageShader>,
+    points_shader_map: HashMap<String, PointShader>,
     current_shader_key: String,
     current_image_key: String,
     current_points_shader_key: String,
@@ -31,8 +31,8 @@ impl DefaultPresenterMode {
     pub const MODE_NAME: &'static str = "default";
 
     pub fn new() -> Self {
-        let shader_map = shader::load_shaders(&SHADER_LIST.to_vec());
-        let points_shader_map = shader::load_shaders(&POINTS_SHADER_LIST.to_vec());
+        let shader_map = load_shaders!(SHADER_LIST, ImageShader);
+        let points_shader_map = load_shaders!(POINTS_SHADER_LIST, PointShader);
         let current_shader_key = DEFAULT_SHADER_KEY.to_string();
         let current_image_key = "".to_string();
         let current_points_shader_key = DEFAULT_POINTS_SHADER_KEY.to_string();
@@ -43,6 +43,12 @@ impl DefaultPresenterMode {
             current_image_key,
             current_points_shader_key,
         }
+    }
+}
+
+impl Default for DefaultPresenterMode {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -129,24 +135,24 @@ impl PresenterMode for DefaultPresenterMode {
         shader.adjust_aspect_ratio(image_width, image_height, width, height);
         let shader_id = shader.get_shader_id();
 
-        let points_vertex = image_manager.get_points_vertex(&self.current_image_key);
-        let points_shader_id = self
+        let pts_vertex = image_manager.get_points_vertex(&self.current_image_key);
+        let pts_shader = self
             .points_shader_map
             .get(&self.current_points_shader_key)
-            .unwrap()
-            .get_shader_id();
+            .unwrap();
+        let pts_shader_id = pts_shader.get_shader_id();
 
         unsafe {
             gl::UseProgram(shader_id);
-            shader.set_uniform_variables(shader_id, false);
+            shader.set_uniform_variables();
 
             gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
             fbo_vertex.draw();
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
-            if let Some(pts_vtx) = points_vertex {
-                gl::UseProgram(points_shader_id);
-                shader.set_uniform_variables(points_shader_id, true);
+            if let Some(pts_vtx) = pts_vertex {
+                gl::UseProgram(pts_shader_id);
+                pts_shader.set_uniform_variables(&shader);
                 pts_vtx.draw_points();
             }
         }
@@ -169,7 +175,10 @@ impl PresenterMode for DefaultPresenterMode {
 
                 ui.separator();
                 ui.text(im_str!("Point parameter"));
-                let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
+                let shader = self
+                    .points_shader_map
+                    .get_mut(&self.current_points_shader_key)
+                    .unwrap();
                 imgui::Slider::new(im_str!("Point size"))
                     .range(1.0..=100.0)
                     .build(&ui, &mut shader.point_size.value);
