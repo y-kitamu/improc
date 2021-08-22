@@ -15,11 +15,24 @@ pub fn inv_affine_mat<T: Scalar + ComplexField>(affine_mat: &Matrix2x3<T>) -> Ma
     inv_affine_mat
 }
 
+/// merge affine transforms
+pub fn merge_affine_transforms<T: Scalar + ComplexField>(
+    lhs: &Matrix2x3<T>,
+    rhs: &Matrix2x3<T>,
+) -> Matrix2x3<T> {
+    let rot_scale: Matrix2<T> = matrix![
+        lhs.m11.clone(), lhs.m12.clone();
+        lhs.m21.clone(), lhs.m22.clone();
+    ];
+    let mut merged = rot_scale * rhs;
+    merged.m13 += lhs.m13.clone();
+    merged.m23 += lhs.m23.clone();
+    merged
+}
+
 #[cfg(test)]
 mod tests {
-    use nalgebra::{matrix, Matrix2x3};
-
-    use super::inv_affine_mat;
+    use super::*;
 
     #[test]
     fn test_inv_affine_mat_shift() {
@@ -37,9 +50,79 @@ mod tests {
         assert!((inv.m23 - 4.0).abs() < 1e-5);
     }
 
+    #[test]
     fn test_inv_affine_mat_scale() {
-        // let shift: Matrix2x3<f32> = matrix![
+        let scale: Matrix2x3<f32> = matrix![
+            2.0, 0.0, 1.0;
+            0.0, -0.8, -3.0;
+        ];
+        let inv = inv_affine_mat(&scale);
+        assert!((inv.m11 - 0.5).abs() < 1e-5, "inv.m11 = {}", inv.m11);
+        assert!((inv.m22 + 1.25).abs() < 1e-5, "inv.m22 = {}", inv.m22);
 
-        // ]
+        let inv0 = merge_affine_transforms(&scale, &inv);
+        let inv1 = merge_affine_transforms(&inv, &scale);
+        assert!((inv0.m11 - 1.0).abs() < 1e-5, "inv0.m11 = {}", inv0.m11);
+        assert!((inv0.m12 - 0.0).abs() < 1e-5, "inv0.m11 = {}", inv0.m12);
+        assert!((inv0.m13 - 0.0).abs() < 1e-5, "inv0.m11 = {}", inv0.m13);
+        assert!((inv0.m21 - 0.0).abs() < 1e-5, "inv0.m11 = {}", inv0.m21);
+        assert!((inv0.m22 - 1.0).abs() < 1e-5, "inv0.m11 = {}", inv0.m22);
+        assert!((inv0.m23 - 0.0).abs() < 1e-5, "inv0.m11 = {}", inv0.m23);
+
+        assert!(
+            (inv0.m11 - inv1.m11).abs() < 1e-5,
+            "inv0.m11 = {}, inv1.m11 = {}",
+            inv0.m11,
+            inv1.m11
+        );
+        assert!(
+            (inv0.m12 - inv1.m12).abs() < 1e-5,
+            "inv0.m12 = {}, inv1.m12 = {}",
+            inv0.m12,
+            inv1.m12
+        );
+        assert!(
+            (inv0.m13 - inv1.m13).abs() < 1e-5,
+            "inv0.m13 = {}, inv1.m13 = {}",
+            inv0.m13,
+            inv1.m13
+        );
+        assert!(
+            (inv0.m21 - inv1.m21).abs() < 1e-5,
+            "inv0.m21 = {}, inv1.m21 = {}",
+            inv0.m21,
+            inv1.m21
+        );
+        assert!(
+            (inv0.m22 - inv1.m22).abs() < 1e-5,
+            "inv0.m22 = {}, inv1.m22 = {}",
+            inv0.m22,
+            inv1.m22
+        );
+        assert!(
+            (inv0.m23 - inv1.m23).abs() < 1e-5,
+            "inv0.m23 = {}, inv1.m23 = {}",
+            inv0.m23,
+            inv1.m23
+        );
+    }
+
+    #[test]
+    fn test_merge_affine_transform() {
+        let lhs: Matrix2x3<f32> = matrix![
+            -0.8, 0.5, 1.0;
+            0.0, 2.0, -0.5;
+        ];
+        let rhs: Matrix2x3<f32> = matrix![
+            -0.5, 0.0, 10.0;
+            1.0, 3.0, 2.0;
+        ];
+        let merged = merge_affine_transforms(&lhs, &rhs);
+        assert!((merged.m11 - 1.3) < 1e-5, "merged.m11 = {}", merged.m11);
+        assert!((merged.m12 - 1.5) < 1e-5, "merged.m12 = {}", merged.m12);
+        assert!((merged.m13 + 6.0) < 1e-5, "merged.m13 = {}", merged.m13);
+        assert!((merged.m21 - 2.0) < 1e-5, "merged.m21 = {}", merged.m21);
+        assert!((merged.m22 - 6.0) < 1e-5, "merged.m22 = {}", merged.m22);
+        assert!((merged.m23 - 3.5) < 1e-5, "merged.m23 = {}", merged.m23);
     }
 }
