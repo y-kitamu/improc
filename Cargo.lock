@@ -464,6 +464,7 @@ dependencies = [
  "env_logger",
  "feat",
  "image",
+ "nalgebra",
  "viewer",
 ]
 

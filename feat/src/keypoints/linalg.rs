@@ -1,4 +1,6 @@
-use nalgebra::{matrix, ComplexField, Matrix2, Matrix2x3, Scalar};
+use std::ops::{Add, Mul};
+
+use nalgebra::{matrix, vector, ComplexField, Matrix2, Matrix2x3, Scalar, Vector2};
 
 /// calculate inverse of given affine matrix.
 pub fn inv_affine_mat<T: Scalar + ComplexField>(affine_mat: &Matrix2x3<T>) -> Matrix2x3<T> {
@@ -30,9 +32,34 @@ pub fn merge_affine_transforms<T: Scalar + ComplexField>(
     merged
 }
 
+///
+pub fn affine_transform<'a, T>(affine_mat: &Matrix2x3<T>, pt: &Vector2<T>) -> Vector2<T>
+where
+    T: Scalar + ComplexField,
+    T: Add + Mul + Copy,
+{
+    let vec: Vector2<T> = vector![
+        affine_mat.m11 * pt.x + affine_mat.m12 * pt.y + affine_mat.m13,
+        affine_mat.m21 * pt.x + affine_mat.m22 * pt.y + affine_mat.m23
+    ];
+    vec
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_affine_transform() {
+        let affine_mat: Matrix2x3<f32> = matrix![
+            2.0, 0.5, 1.0;
+            -1.0, 0.8, -1.5;
+        ];
+        let pt: Vector2<f32> = vector![1.0, -0.5];
+        let dst = affine_transform(&affine_mat, &pt);
+        assert!((dst.x - 2.75).abs() < 1e-5);
+        assert!((dst.y + 2.9).abs() < 1e-5);
+    }
 
     #[test]
     fn test_inv_affine_mat_shift() {
