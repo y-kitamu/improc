@@ -35,8 +35,7 @@ pub fn merge_affine_transforms<T: Scalar + ComplexField>(
 ///
 pub fn affine_transform<'a, T>(affine_mat: &Matrix2x3<T>, pt: &Vector2<T>) -> Vector2<T>
 where
-    T: Scalar + ComplexField,
-    T: Add + Mul + Copy,
+    T: Scalar + ComplexField + Add + Mul + Copy,
 {
     let vec: Vector2<T> = vector![
         affine_mat.m11 * pt.x + affine_mat.m12 * pt.y + affine_mat.m13,

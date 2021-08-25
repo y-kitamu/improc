@@ -1,12 +1,13 @@
 use std::ops::Deref;
 
 use image::{ColorType, ImageBuffer, Pixel};
-use nalgebra::Matrix2x3;
+use nalgebra::{vector, Matrix2x3};
 use num_traits::ToPrimitive;
 
-use super::{linalg::inv_affine_mat, KeyPoint};
+use super::{linalg, linalg::inv_affine_mat, KeyPoint};
 
 /// affine transformation (linear interpolation)
+/// `affine_mat` is projection from source points to destination points
 pub fn affine_transform<P, Container>(
     img: &ImageBuffer<P, Container>,
     affine_mat: &Matrix2x3<f32>,
@@ -17,10 +18,45 @@ where
     Container: Deref<Target = [P::Subpixel]>,
 {
     let inv_affine_mat = inv_affine_mat(&affine_mat);
-
     let data = img.as_raw();
-    let transformed: Vec<u8> = Vec::with_capacity(data.len());
+    let mut transformed: Vec<u8> = Vec::with_capacity(data.len());
+    let x_stride = P::CHANNEL_COUNT as usize;
+    let y_stride = x_stride * img.width() as usize;
 
+    for y in 0..img.height() {
+        for x in 0..img.width() {
+            let pt = linalg::affine_transform(&inv_affine_mat, &vector![x as f32, y as f32]);
+            // TODO: functionalize
+            let mut ix = pt.x.floor() as isize;
+            let mut iy = pt.y.floor() as isize;
+            let mut fx = pt.x.clone() - ix as f32;
+            let mut fy = pt.y.clone() - iy as f32;
+            if ix < 0 {
+                ix = 0;
+                fx = 0.0f32;
+            }
+            if ix >= (img.width() - 1) as isize {
+                ix = img.width() as isize - 2;
+                fx = 1.0f32;
+            }
+            if iy < 0 {
+                iy = 0;
+                fy = 0.0f32;
+            }
+            if iy >= (img.height() - 1) as isize {
+                iy = img.height() as isize - 2;
+                fy = 1.0f32;
+            }
+            for c in 0..x_stride {
+                let offset = iy as usize * y_stride + ix as usize * x_stride + c;
+                let val = (1.0f32 - fx) * (1.0f32 - fy) * data[offset].to_f32().unwrap()
+                    + fx * (1.0f32 - fy) * data[offset + x_stride].to_f32().unwrap()
+                    + (1.0f32 - fx) * fy * data[offset + y_stride].to_f32().unwrap()
+                    + fx * fy * data[offset + y_stride + x_stride].to_f32().unwrap();
+                transformed.push(val as u8);
+            }
+        }
+    }
     transformed
 }
 
@@ -181,8 +217,39 @@ where
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::matrix;
+
     use super::super::KeyPoint;
-    use super::{create_gauss_kernel, gaussian, gray, nms, resize};
+    use super::*;
+
+    #[test]
+    fn test_affine_transform() {
+        let length = 10;
+        let img = image::RgbImage::from_fn(length, length, |x, y| {
+            image::Rgb([(x + y) as u8, x as u8, y as u8])
+        });
+        #[rustfmt::skip]
+        let affine_mat = matrix![
+            1.0, 0.0, 2.0;
+            0.0, 1.0, 3.0;
+        ];
+        let res = affine_transform(&img, &affine_mat);
+
+        assert_eq!(res[0], 0u8, "x = 0, y = 0");
+        assert_eq!(res[1], 0u8, "x = 0, y = 0");
+        assert_eq!(res[2], 0u8, "x = 0, y = 0");
+        for y in 3..length - 3 {
+            for x in 2..length - 2 {
+                let offset = ((y * length + x) * 3) as usize;
+                assert_eq!(res[offset + 0], (x + y - 5) as u8, "x = {}, y = {}", x, y);
+                assert_eq!(res[offset + 1], (x - 2) as u8, "x = {}, y = {}", x, y);
+                assert_eq!(res[offset + 2], (y - 3) as u8, "x = {}, y = {}", x, y);
+            }
+        }
+        assert_eq!(res[res.len() - 3], (length + length - 7) as u8);
+        assert_eq!(res[res.len() - 2], (length - 3) as u8);
+        assert_eq!(res[res.len() - 1], (length - 4) as u8);
+    }
 
     #[test]
     fn test_gaussian() {
