@@ -35,7 +35,9 @@ impl App {
     /// ```
     pub fn new(width: u32, height: u32) -> Result<App> {
         let sdl_context = sdl2::init().map_err(|err| AppError::SdlInitError(err))?;
-        let video_subsystem = sdl_context.video().unwrap();
+        let video_subsystem = sdl_context
+            .video()
+            .map_err(|err| AppError::SdlInitError(err))?;
         {
             let gl_attr = video_subsystem.gl_attr();
             gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
