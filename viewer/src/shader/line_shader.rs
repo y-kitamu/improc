@@ -1,6 +1,4 @@
-use std::{ffi::CString, ops::Add};
-
-use cgmath::Vector4;
+use std::ffi::CString;
 
 use crate::shader::{set_mat4_array, set_vec3};
 

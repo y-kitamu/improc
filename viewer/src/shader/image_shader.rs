@@ -63,10 +63,10 @@ impl ImageShader {
     /// 画像を拡大縮小する
     pub fn on_mouse_wheel_event(
         &mut self,
-        timestamp: &u32,
-        window_id: &u32,
-        which: &u32,
-        x: &i32,
+        _timestamp: &u32,
+        _window_id: &u32,
+        _which: &u32,
+        _x: &i32,
         y: &i32,
         direction: &MouseWheelDirection,
     ) {
@@ -81,12 +81,12 @@ impl ImageShader {
     ///
     pub fn on_mouse_motion_event(
         &mut self,
-        timestamp: &u32,
-        window_id: &u32,
-        which: &u32,
-        mousestate: &MouseState,
-        x: &i32,
-        y: &i32,
+        _timestamp: &u32,
+        _window_id: &u32,
+        _which: &u32,
+        _mousestate: &MouseState,
+        _x: &i32,
+        _y: &i32,
         xrel: f32,
         yrel: f32,
     ) {
@@ -99,11 +99,11 @@ impl ImageShader {
     /// mouseが画像をクリックしたか判定する
     pub fn on_mouse_button_down(
         &mut self,
-        timestamp: &u32,
-        window_id: &u32,
-        which: &u32,
-        mouse_btn: &MouseButton,
-        clicks: &u8,
+        _timestamp: &u32,
+        _window_id: &u32,
+        _which: &u32,
+        _mouse_btn: &MouseButton,
+        _clicks: &u8,
         x: f32, // -1.0 to 1.0
         y: f32, // -1.0 to 1.0
     ) {
@@ -115,13 +115,13 @@ impl ImageShader {
 
     pub fn on_mouse_button_up(
         &mut self,
-        timestamp: &u32,
-        window_id: &u32,
-        which: &u32,
-        mouse_btn: &MouseButton,
-        clicks: &u8,
-        x: &i32, // -1.0 to 1.0
-        y: &i32, // -1.0 to 1.0
+        _timestamp: &u32,
+        _window_id: &u32,
+        _which: &u32,
+        _mouse_btn: &MouseButton,
+        _clicks: &u8,
+        _x: &i32, // -1.0 to 1.0
+        _y: &i32, // -1.0 to 1.0
     ) {
         self.is_dragging = false;
     }

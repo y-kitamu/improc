@@ -9,7 +9,7 @@ use log::info;
 use sdl2::{event::Event, keyboard::Keycode, Sdl, VideoSubsystem};
 
 use crate::vertex::Vertex;
-use crate::{image_manager::ImageManager, presenter::Presenter};
+use crate::{model::image_manager::ImageManager, presenter::Presenter};
 use crate::{shader::image_shader::ImageShader, vertex};
 
 #[derive(Debug)]

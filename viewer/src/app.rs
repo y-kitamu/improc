@@ -1,10 +1,13 @@
+use std::path::Path;
+
 use anyhow::Result;
 use cgmath::Point3;
 
 use image::DynamicImage;
+use log::warn;
 use sdl2::sys::SDL_SetWindowResizable;
 
-use crate::{image_manager::ImageManager, presenter::Presenter, viewer::Viewer};
+use crate::{model::image_manager::ImageManager, presenter::Presenter, view::viewer::Viewer};
 
 /// User interface of the image viewer app.
 /// This struct prepare `Viewer`, `Presenter` and `ImageManager` to render images and widgets.
@@ -59,6 +62,16 @@ impl App {
         self
     }
 
+    pub fn add_image_from_path(mut self, image_path: &Path, id: &str, vertical_flip: bool) -> Self {
+        if let Err(_) = self.image_manager.load_image(image_path, id, vertical_flip) {
+            warn!(
+                "Failed to add image of path : {}",
+                image_path.to_str().unwrap_or("None")
+            );
+        }
+        self
+    }
+
     pub fn add_images(mut self, images: &Vec<DynamicImage>, id_base: &str) -> Self {
         for i in 0..images.len() {
             let id = format!("{}_{}", id_base, i);
@@ -67,6 +80,10 @@ impl App {
         self
     }
 
+    /// Add point to a image of key = `image_id`.
+    /// Argument `x` and `y` are treated as point on the image coordinate system.
+    /// A value range of `z` is from -1.0 to 1.0.
+    /// Argument `r`, `g` and `b` are pixel values range from 0.0 to 1.0.
     pub fn add_point(
         mut self,
         image_id: &str,

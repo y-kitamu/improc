@@ -7,7 +7,7 @@ use imgui::im_str;
 use sdl2::event::Event;
 
 use crate::{
-    image_manager::ImageManager,
+    model::image_manager::ImageManager,
     vertex::{self, Vertex},
 };
 

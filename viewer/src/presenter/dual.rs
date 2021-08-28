@@ -4,7 +4,7 @@ use imgui::im_str;
 use sdl2::{event::Event, sys::SDL_GetMouseState};
 
 use crate::{
-    image_manager::ImageManager,
+    model::image_manager::ImageManager,
     shader::{image_shader::ImageShader, line_shader::LineShader, point_shader::PointShader},
     vertex::Vertex,
 };
@@ -104,7 +104,7 @@ impl DualImagePresenter {
     }
 
     fn get_current_shader(&mut self, fbo_width: u32) -> &mut ImageShader {
-        let (x, y) = get_mouse_pos();
+        let (x, _y) = get_mouse_pos();
         let current_shader = if x < fbo_width / 2 {
             self.shader_map_left
                 .get_mut(&self.current_shader_key)
