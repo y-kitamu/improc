@@ -84,8 +84,10 @@ impl ImageManager {
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
         println!("Finish register image : id = {}, index = {}", id, texture);
-        self.images
-            .insert(id, Image::new(texture, image.width(), image.height()));
+        self.images.insert(
+            id.clone(),
+            Image::new(&id, texture, image.width(), image.height()),
+        );
     }
 
     /// `ImageManager`に登録済みの画像のkeyの一覧を取得する
@@ -155,17 +157,21 @@ impl ImageManager {
         rx: f32,
         ry: f32,
     ) {
-        let image = self
-            .images
-            .remove(lhs_key)
-            .unwrap()
-            .add_point_relation(lx, ly, rhs_key, rx, ry);
+        let image = self.images.remove(lhs_key).unwrap().add_point_relation(
+            lx,
+            ly,
+            self.images.get(rhs_key).unwrap(),
+            rx,
+            ry,
+        );
         self.images.insert(lhs_key.to_string(), image);
-        let image = self
-            .images
-            .remove(rhs_key)
-            .unwrap()
-            .add_point_relation(rx, ry, lhs_key, lx, ly);
+        let image = self.images.remove(rhs_key).unwrap().add_point_relation(
+            rx,
+            ry,
+            self.images.get(lhs_key).unwrap(),
+            lx,
+            ly,
+        );
         self.images.insert(rhs_key.to_string(), image);
     }
 
@@ -179,5 +185,17 @@ impl ImageManager {
             }
         }
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_image_manager() {
+        let manager = ImageManager::new();
+        assert!(manager.images.is_empty());
+        assert!(!manager.is_build);
     }
 }

@@ -30,9 +30,8 @@ impl<T> UniformVariable<T> {
 /// shaderをcompileする.
 /// geometry shaderはGL_LINESのみ対応
 fn compile_shader(shader_path_stem: &str) -> u32 {
-    let cur_file = Path::new(file!());
-    let cur_dir = cur_file.parent().unwrap();
-    let shader_dir = cur_dir.join("glsl");
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let shader_dir = manifest_dir.join("src").join("shader").join("glsl");
 
     let vertex_basename = format!("{}.vs", shader_path_stem);
     let fragment_basename = format!("{}.fs", shader_path_stem);
@@ -41,7 +40,11 @@ fn compile_shader(shader_path_stem: &str) -> u32 {
         shader_dir.join(vertex_basename).as_path(),
         gl::VERTEX_SHADER,
     )
-    .unwrap();
+    .expect(&format!(
+        "Failed to register vertex shader : {}/{}",
+        shader_dir.to_str().unwrap(),
+        shader_path_stem
+    ));
     let fragment = register_shader(
         shader_dir.join(fragment_basename).as_path(),
         gl::FRAGMENT_SHADER,

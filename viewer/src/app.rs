@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use cgmath::Point3;
+use thiserror::Error;
 
 use image::DynamicImage;
 use log::warn;
@@ -9,20 +10,31 @@ use sdl2::sys::SDL_SetWindowResizable;
 
 use crate::{model::image_manager::ImageManager, presenter::Presenter, view::viewer::Viewer};
 
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("failed to initialize sdl2 : {0}")]
+    SdlInitError(String),
+}
+
 /// User interface of the image viewer app.
 /// This struct prepare `Viewer`, `Presenter` and `ImageManager` to render images and widgets.
 /// Users can add images and points via this struct.
 pub struct App {
-    viewer: Viewer,              // view
-    presenter: Presenter,        // presenter
-    image_manager: ImageManager, //model
+    viewer: Viewer,                  // view
+    presenter: Presenter,            // presenter
+    pub image_manager: ImageManager, //model
 }
 
 impl App {
     /// Initialize sdl2 and opengl context and
     /// create `Viewer`, `Presente` and `ImageManager` instance.
+    /// # Example
+    /// ```no_run
+    /// use viewer::app::App;
+    /// let app = App::new(1280u32, 1080u32).unwrap();
+    /// ```
     pub fn new(width: u32, height: u32) -> Result<App> {
-        let sdl_context = sdl2::init().unwrap();
+        let sdl_context = sdl2::init().map_err(|err| AppError::SdlInitError(err))?;
         let video_subsystem = sdl_context.video().unwrap();
         {
             let gl_attr = video_subsystem.gl_attr();

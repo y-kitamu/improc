@@ -4,14 +4,7 @@ use feat::keypoints::{fast::FASTCornerDetector, imgproc::gray, KeypointDetector}
 use image::GenericImageView;
 
 fn main() {
-    let source_file = Path::new(file!());
-    let project_root = source_file
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap();
+    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let image_file = project_root.join("data/sample_image/surface.png");
     // let image_file = project_root.join("data/sample_image/IMG_20210722_170349.jpg");
     println!("image file : {:?}", image_file);
@@ -34,11 +27,9 @@ fn main() {
     println!("feats num = {}", feats.len());
     app = feats.iter().fold(app, |ap, feat| {
         // println!("(x, y) = {}, {}", feat.x(), feat.y());
-        let px = feat.x() / image.width() as f32 * 2.0 - 1.0;
-        let py = 1.0 - feat.y() / image.height() as f32 * 2.0;
-        ap.add_point("default", px, py, 1.0, 1.0, 0.0, 0.0)
-            .add_point("other", px, py, 1.0, 1.0, 0.0, 0.0)
-            .add_point_relation("default", px, py, "other", px, py)
+        ap.add_point("default", feat.x(), feat.y(), 1.0, 1.0, 0.0, 0.0)
+            .add_point("other", feat.x(), feat.y(), 1.0, 1.0, 0.0, 0.0)
+            .add_point_relation("default", feat.x(), feat.y(), "other", feat.x(), feat.y())
     });
     app.run().unwrap();
 }

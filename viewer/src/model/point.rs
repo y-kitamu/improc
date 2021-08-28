@@ -36,7 +36,7 @@ impl Point {
     }
 
     pub fn is_equal_to(&self, x: f32, y: f32) -> bool {
-        (self.x() - x) < 1e-5 && (self.y() - y) < 1e-5
+        (self.x() - x).abs() < 1e-5 && (self.y() - y).abs() < 1e-5
     }
 
     pub fn get_relation(&self, target_image_id: &str) -> Option<&Point3<f32>> {
@@ -75,5 +75,32 @@ impl PartialEq for Point {
 
     fn ne(&self, other: &Self) -> bool {
         !self.eq(other)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_point() {
+        let mut pt = Point::new(1.0, 0.5, -1.0, 0.0, 1.0, 0.8);
+        assert!((pt.x() - 1.0).abs() < 1e-5);
+        assert!((pt.y() - 0.5).abs() < 1e-5);
+        assert!((pt.z() + 1.0).abs() < 1e-5);
+        assert!((pt.r() - 0.0).abs() < 1e-5);
+        assert!((pt.g() - 1.0).abs() < 1e-5);
+        assert!((pt.b() - 0.8).abs() < 1e-5);
+
+        assert!(pt.is_equal_to(1.0, 0.5));
+        assert!(!pt.is_equal_to(1.0, 0.55));
+
+        let key = "sample";
+        pt.add_relation(key, 0.5, -0.7);
+        let rel = pt.get_relation(key);
+        assert!(rel.is_some());
+        let rel = rel.unwrap();
+        assert!((rel.x - 0.5).abs() < 1e-5);
+        assert!((rel.y + 0.7).abs() < 1e-5);
     }
 }
