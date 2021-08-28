@@ -3,7 +3,11 @@ use viewer;
 
 #[test]
 fn test_app() {
-    let app = viewer::app::App::new(10u32, 10u32).unwrap();
+    let app = viewer::app::App::new(10u32, 10u32);
+    if app.is_err() {
+        return;
+    }
+    let app = app.unwrap();
 
     let (w, h) = (10, 5);
     let key = "sample";
