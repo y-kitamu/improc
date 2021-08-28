@@ -37,7 +37,7 @@ impl Brief {
     }
 }
 
-impl Extractor<Descriptor<BitVec>> for Brief {
+impl Extractor<BitVec> for Brief {
     fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BitVec>> {
         let gauss =
             image::GrayImage::from_raw(img.width(), img.height(), gaussian(img, 9, 3.05)).unwrap();
