@@ -4,14 +4,14 @@ use crate::{descriptors::Descriptor, Distance};
 
 struct Match<T>
 where
-    T: Distance,
+    T: Distance + Clone,
 {
     matches: HashMap<String, Descriptor<T>>,
 }
 
 impl<T> Match<T>
 where
-    T: Distance,
+    T: Distance + Clone,
 {
     fn new(
         lhs_key: &str,
@@ -20,15 +20,15 @@ where
         rhs_desc: &Descriptor<T>,
     ) -> Self {
         let mut matches = HashMap::<String, Descriptor<T>>::new();
-        matches.insert(lhs_key.to_string(), lhs_desc);
-        matches.insert(rhs_key.to_string(), rhs_desc);
+        matches.insert(lhs_key.to_string(), lhs_desc.clone());
+        matches.insert(rhs_key.to_string(), rhs_desc.clone());
         Match::<T> { matches }
     }
 }
 
 trait Matcher<T>
 where
-    T: Distance,
+    T: Distance + Clone,
 {
     fn run(&self, lhs_key: &str, rhs_key: &str) -> Vec<Match<T>>;
 }
