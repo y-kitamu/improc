@@ -4,7 +4,9 @@ use image::{ColorType, ImageBuffer, Pixel};
 use nalgebra::{vector, Matrix2x3};
 use num_traits::ToPrimitive;
 
-use super::{linalg, linalg::inv_affine_mat, KeyPoint};
+use crate::feat::keypoints::KeyPoint;
+
+use super::{linalg, linalg::inv_affine_mat};
 
 /// affine transformation (linear interpolation)
 /// `affine_mat` is projection from source points to destination points
@@ -219,7 +221,6 @@ where
 mod tests {
     use nalgebra::matrix;
 
-    use super::super::KeyPoint;
     use super::*;
 
     #[test]

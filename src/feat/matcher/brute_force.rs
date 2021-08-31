@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{descriptors::Descriptor, Distance};
+use crate::feat::{descriptors::Descriptor, Distance};
 
 use super::{Match, Matcher};
 
@@ -78,7 +78,7 @@ where
 mod tests {
     use bitvec::prelude::*;
 
-    use crate::keypoints::KeyPoint;
+    use crate::feat::keypoints::KeyPoint;
 
     use super::*;
 

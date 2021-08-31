@@ -3,7 +3,7 @@ use image::{GrayImage, Luma, Pixel};
 use nalgebra::Point2;
 use rand_distr::{Distribution, Normal};
 
-use crate::keypoints::{imgproc::gaussian, KeyPoint};
+use crate::{feat::keypoints::KeyPoint, imgproc::gaussian};
 
 use super::{Descriptor, Extractor};
 

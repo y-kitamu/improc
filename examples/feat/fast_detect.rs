@@ -1,7 +1,10 @@
 use std::path::Path;
 
-use feat::keypoints::{fast::FASTCornerDetector, imgproc::gray, KeypointDetector};
 use image::GenericImageView;
+use improc::{
+    feat::keypoints::{fast::FASTCornerDetector, KeypointDetector},
+    imgproc::gray,
+};
 
 fn main() {
     let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));

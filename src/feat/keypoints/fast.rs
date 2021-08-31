@@ -2,7 +2,9 @@
 use image::GrayImage;
 use nalgebra::Point2;
 
-use super::{imgproc::nms, KeyPoint, KeypointDetector};
+use crate::imgproc::nms;
+
+use super::{KeyPoint, KeypointDetector};
 
 /// 指定した半径`radius`の円周上の点を取得する
 fn create_circle(radius: u32) -> Vec<Point2<f32>> {
@@ -73,7 +75,7 @@ impl KeypointDetector for FASTCornerDetector {
         if level + 1 < self.n_pyramid {
             let resized_w = image.width() / 2;
             let resized_h = image.height() / 2;
-            let resized_raw = super::imgproc::resize(&image, resized_w, resized_h);
+            let resized_raw = crate::imgproc::resize(&image, resized_w, resized_h);
             let resized_image =
                 image::GrayImage::from_raw(resized_w, resized_h, resized_raw).unwrap();
             let mut kpts = self.detect(&resized_image, level + 1);
@@ -128,7 +130,7 @@ impl KeypointDetector for FASTCornerDetector {
 #[cfg(test)]
 mod tests {
     use super::{calc_crf, FASTCornerDetector};
-    use crate::keypoints::KeypointDetector;
+    use crate::feat::keypoints::KeypointDetector;
 
     #[test]
     fn fast_detect() {

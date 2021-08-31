@@ -1,6 +1,6 @@
 use image::GrayImage;
 
-use crate::{keypoints::KeyPoint, Distance};
+use super::{keypoints::KeyPoint, Distance};
 
 pub mod brief;
 

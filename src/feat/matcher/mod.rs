@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{descriptors::Descriptor, Distance};
+use super::{descriptors::Descriptor, Distance};
 
 struct Match<T>
 where

@@ -3,8 +3,6 @@ use image::GrayImage;
 use nalgebra::geometry::Point2;
 
 pub mod fast;
-pub mod imgproc;
-pub mod linalg;
 
 #[derive(Clone, Copy, Debug)]
 pub struct KeyPoint {
