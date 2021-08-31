@@ -462,6 +462,7 @@ name = "improc"
 version = "0.1.0"
 dependencies = [
  "bitvec",
+ "cgmath",
  "clap",
  "criterion",
  "env_logger",

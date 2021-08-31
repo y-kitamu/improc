@@ -4,7 +4,7 @@ use crate::feat::{descriptors::Descriptor, Distance};
 
 use super::{Match, Matcher};
 
-struct BruteForceMathcer<T>
+pub struct BruteForceMathcer<T>
 where
     T: Distance + Clone,
 {
@@ -16,7 +16,7 @@ impl<T> BruteForceMathcer<T>
 where
     T: Distance + Clone,
 {
-    fn new(
+    pub fn new(
         lhs_key: &str,
         lhs_descs: Vec<Descriptor<T>>,
         rhs_key: &str,
@@ -56,9 +56,8 @@ where
         let mut matches = Vec::new();
         let mut lflag: Vec<bool> = vec![true; lhs_descs.len()];
         let mut rflag: Vec<bool> = vec![true; rhs_descs.len()];
-        println!("dists.len() = {}", dists.len());
         for m in dists {
-            println!("lhs_idx = {}, rhs_idx = {}", m.1, m.2);
+            // println!("lhs_idx = {}, rhs_idx = {}", m.1, m.2);
             if lflag[m.1] && rflag[m.2] {
                 matches.push(Match::new(
                     lhs_key,
@@ -66,9 +65,9 @@ where
                     rhs_key,
                     &rhs_descs[m.2],
                 ));
+                lflag[m.1] = false;
+                rflag[m.2] = false;
             }
-            lflag[m.1] = false;
-            rflag[m.2] = false;
         }
         matches
     }

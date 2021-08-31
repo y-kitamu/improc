@@ -115,7 +115,7 @@ impl App {
     pub fn add_points(
         self,
         image_id: &str,
-        points: Vec<Point3<f32>>,
+        points: &Vec<Point3<f32>>,
         r: f32,
         g: f32,
         b: f32,

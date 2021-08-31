@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use super::{descriptors::Descriptor, Distance};
 
-struct Match<T>
+pub struct Match<T>
 where
     T: Distance + Clone,
 {
-    matches: HashMap<String, Descriptor<T>>,
+    pub matches: HashMap<String, Descriptor<T>>,
 }
 
 impl<T> Match<T>
@@ -26,7 +26,7 @@ where
     }
 }
 
-trait Matcher<T>
+pub trait Matcher<T>
 where
     T: Distance + Clone,
 {

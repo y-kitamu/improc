@@ -17,6 +17,9 @@ pub struct Brief {
 }
 
 impl Brief {
+    /// Args
+    /// - patch_size : 特徴量を計算するpatch size。論文だと31
+    /// - n_binary_test : number of binary test to be calculated。論文だと256
     pub fn new(patch_size: u32, n_binary_test: u32) -> Self {
         let mut rng = rand::thread_rng();
         let normal = Normal::new(0.0, patch_size as f32 / 5.0).unwrap();
@@ -53,7 +56,7 @@ impl Extractor<BitVec> for Brief {
                 let (dx0, dy0) = (p0.x as usize, p0.y as usize);
                 let (dx1, dy1) = (p1.x as usize, p1.y as usize);
                 let idx0 = (cy + dy0) * stride_y + (cx + dx0) * stride_x;
-                let idx1 = (cy + dy1) * stride_y + (cx + dx1) * stride_y;
+                let idx1 = (cy + dy1) * stride_y + (cx + dx1) * stride_x;
                 desc.push(data[idx0] < data[idx1])
             }
             let desc = Descriptor {

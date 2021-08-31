@@ -41,6 +41,7 @@ impl ImageManager {
     /// 画像をtextureに追加する。
     /// 画像のポインタの先頭が画像の左下であると想定している。
     pub fn add_image(&mut self, image: &DynamicImage, id: &str) {
+        let image = image.flipv();
         let id = id.to_string();
         if self.images.contains_key(&id) {
             warn!(
