@@ -100,23 +100,21 @@ where
     Container: Deref<Target = [P::Subpixel]>,
 {
     let (width, height) = (img.width() as usize, img.height() as usize);
-    let data = img.as_raw();
-    let x_stride = P::CHANNEL_COUNT as usize;
-    let y_stride = width * x_stride;
+    // let data = img.as_raw();
+    let data = padding(img, kernel_size as usize / 2);
+    let x_stride = P::CHANNEL_COUNT as usize; //
+    let y_stride = (width + kernel_size as usize / 2 * 2) * x_stride;
     let mut res: Vec<u8> = Vec::with_capacity(height * y_stride);
     let kernel = create_gauss_kernel(kernel_size, sigma);
-    let half = (kernel_size / 2) as isize;
 
-    for y in 0..height as isize {
-        for x in 0..width as isize {
+    for y in 0..height {
+        for x in 0..width {
             let mut sums: Vec<f32> = vec![0.0; x_stride];
-            for dy in -half..=half {
-                for dx in -half..=half {
-                    let cy = (y + dy).clamp(0, height as isize - 1) as usize;
-                    let cx = (x + dx).clamp(0, width as isize - 1) as usize;
-                    let offset = cy * y_stride + cx * x_stride;
-                    let kval =
-                        kernel[(dy + half) as usize * kernel_size as usize + (dx + half) as usize];
+            for dy in 0..kernel_size as usize {
+                let y_off = y_stride * (y + dy);
+                for dx in 0..kernel_size as usize {
+                    let offset = y_off + (x + dx) * x_stride;
+                    let kval = kernel[dy * kernel_size as usize + dx];
                     for c in 0..x_stride {
                         sums[c] += kval * data[offset + c].to_f32().unwrap();
                     }
@@ -146,6 +144,83 @@ fn create_gauss_kernel(kernel_size: u32, sigma: f32) -> Vec<f32> {
     let scale = 1.0 / sum;
     let kernel = kernel.iter().map(|val| val * scale).collect();
     kernel
+}
+
+fn padding<P, Container>(img: &ImageBuffer<P, Container>, pad_size: usize) -> Vec<u8>
+where
+    P: Pixel + 'static,
+    P::Subpixel: 'static,
+    Container: Deref<Target = [P::Subpixel]>,
+{
+    let (width, height) = (img.width() as usize, img.height() as usize);
+    let data = img.as_raw();
+    let x_stride = P::CHANNEL_COUNT as usize;
+    let src_y_stride = width * x_stride;
+    let dst_y_stride = (width + pad_size * 2) * x_stride;
+    let mut res: Vec<u8> = vec![0; (height + pad_size * 2) * dst_y_stride];
+
+    let lt: Vec<u8> = (0..x_stride)
+        .map(|c| data[0 + c].to_u8().unwrap())
+        .collect();
+    let rt: Vec<u8> = (0..x_stride)
+        .map(|c| data[src_y_stride - x_stride + c].to_u8().unwrap())
+        .collect();
+    let lb: Vec<u8> = (0..x_stride)
+        .map(|c| data[(height - 1) * src_y_stride + c].to_u8().unwrap())
+        .collect();
+    let rb: Vec<u8> = (0..x_stride)
+        .map(|c| data[data.len() - x_stride + c].to_u8().unwrap())
+        .collect();
+    for y in 0..pad_size {
+        for x in 0..pad_size {
+            for c in 0..x_stride {
+                res[y * dst_y_stride + x * x_stride + c] = lt[c];
+                res[y * dst_y_stride + (x + width + pad_size) * x_stride + c] = rt[c];
+                res[(y + height + pad_size) * dst_y_stride + x * x_stride + c] = lb[c];
+                res[(y + height + pad_size) * dst_y_stride
+                    + (x + width + pad_size) * x_stride
+                    + c] = rb[c];
+            }
+        }
+        let dst_y_off = y * dst_y_stride;
+        for x in 0..width {
+            for c in 0..x_stride {
+                res[dst_y_off + (x + pad_size) * x_stride + c] =
+                    data[x * x_stride + c].to_u8().unwrap();
+            }
+        }
+        let src_y_off = (height - 1) * src_y_stride;
+        let dst_y_off = (y + height + pad_size) * dst_y_stride;
+        for x in 0..width {
+            for c in 0..x_stride {
+                res[dst_y_off + (x + pad_size) * x_stride + c] =
+                    data[src_y_off + x * x_stride + c].to_u8().unwrap();
+            }
+        }
+    }
+
+    for y in 0..height {
+        let src_y_off = y * src_y_stride;
+        let dst_y_off = (y + pad_size) * dst_y_stride;
+        for x in 0..width {
+            let src_off = src_y_off + x * x_stride;
+            let dst_off = dst_y_off + (x + pad_size) * x_stride;
+            for c in 0..x_stride {
+                res[dst_off + c] = data[src_off + c].to_u8().unwrap();
+            }
+        }
+        for x in 0..pad_size {
+            let dst_off0 = dst_y_off + x * x_stride;
+            let dst_off1 = dst_y_off + (x + width + pad_size) * x_stride;
+            for c in 0..x_stride {
+                res[dst_off0 + c] = data[src_y_off + c].to_u8().unwrap();
+                res[dst_off1 + c] = data[src_y_off + src_y_stride - x_stride + c]
+                    .to_u8()
+                    .unwrap();
+            }
+        }
+    }
+    res
 }
 
 /// convert to gray scale.
@@ -281,6 +356,71 @@ mod tests {
         assert!((kernel[1] - kernel[5]).abs() < 1e-5);
         assert!((kernel[1] - kernel[7]).abs() < 1e-5);
         assert!((kernel[4] - 0.2041799555716581).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_padding() {
+        let length = 10;
+        let kernel = 5;
+        let test_image = image::RgbImage::from_fn(length, length, |x, y| {
+            image::Rgb([(x + y) as u8, x as u8, y as u8])
+        });
+        let padded = padding(&test_image, kernel / 2);
+        let dst_size = length as usize + kernel / 2 * 2;
+        assert_eq!(padded.len(), dst_size * dst_size * 3);
+        assert_eq!(padded[0], 0);
+        let y_stride = 3 * dst_size;
+        assert_eq!(
+            padded[3 * (kernel / 2 + 1) as usize - 1],
+            0,
+            "y = 0, x = {}, c = {}",
+            kernel / 2 + 1,
+            2
+        );
+        assert_eq!(
+            padded[3 * (kernel / 2 + 1) as usize + 0],
+            1,
+            "y = 0, x = {}, c = {}",
+            kernel / 2 + 2,
+            0
+        );
+        assert_eq!(
+            padded[3 * (kernel / 2 + 1) as usize + 1],
+            1,
+            "y = 0, x = {}, c = {}",
+            kernel / 2 + 2,
+            1
+        );
+        assert_eq!(
+            padded[3 * (kernel / 2 + 1) as usize + 2],
+            0,
+            "y = 0, x = {}, c = {}",
+            kernel / 2 + 2,
+            2
+        );
+        assert_eq!(
+            padded[3 * (length as usize + kernel / 2 + 1) as usize + 0],
+            length as u8 - 1
+        );
+        assert_eq!(
+            padded[3 * (length as usize + kernel / 2 + 1) as usize + 1],
+            length as u8 - 1
+        );
+        assert_eq!(
+            padded[3 * (length as usize + kernel / 2 + 1) as usize + 1],
+            length as u8 - 1
+        );
+        assert_eq!(
+            padded[3 * (length as usize + kernel / 2 + 1) as usize + 2],
+            0
+        );
+        let rb = (y_stride + 3) * (length as usize + kernel / 2);
+        assert_eq!(padded[rb + 0], ((length - 1) * 2) as u8);
+        assert_eq!(padded[rb + 1], (length - 1) as u8);
+        assert_eq!(padded[rb + 2], (length - 1) as u8);
+        assert_eq!(padded[rb + 3], ((length - 1) * 2) as u8);
+        assert_eq!(padded[rb + 4], (length - 1) as u8);
+        assert_eq!(padded[rb + 5], (length - 1) as u8);
     }
 
     #[test]

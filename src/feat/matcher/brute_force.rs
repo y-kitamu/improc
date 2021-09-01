@@ -65,6 +65,12 @@ where
                     rhs_key,
                     &rhs_descs[m.2],
                 ));
+                if self.allow_duplicate {
+                    lflag[m.1] = false;
+                    rflag[m.2] = false;
+                }
+            }
+            if !self.allow_duplicate {
                 lflag[m.1] = false;
                 rflag[m.2] = false;
             }

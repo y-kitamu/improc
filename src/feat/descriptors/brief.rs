@@ -13,6 +13,7 @@ fn clip_point(patch_size: u32, pt: f32) -> f32 {
 }
 
 pub struct Brief {
+    patch_size: u32,
     pub binary_test_pairs: Vec<(Point2<f32>, Point2<f32>)>,
 }
 
@@ -36,7 +37,10 @@ impl Brief {
             }
             binary_test_pairs.push((Point2::new(x0, y0), Point2::new(x1, y1)));
         }
-        Brief { binary_test_pairs }
+        Brief {
+            patch_size,
+            binary_test_pairs,
+        }
     }
 }
 
@@ -51,8 +55,15 @@ impl Extractor<BitVec> for Brief {
 
         for kpt in kpts {
             let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
+            let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);
+            if cx < (self.patch_size / 2) as usize
+                || cy < (self.patch_size / 2) as usize
+                || cx >= (gauss.width() - self.patch_size / 2) as usize
+                || cy >= (gauss.height() - self.patch_size / 2) as usize
+            {
+                continue;
+            }
             for (p0, p1) in &self.binary_test_pairs {
-                let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);
                 let (dx0, dy0) = (p0.x as usize, p0.y as usize);
                 let (dx1, dy1) = (p1.x as usize, p1.y as usize);
                 let idx0 = (cy + dy0) * stride_y + (cx + dx0) * stride_x;

@@ -5,6 +5,7 @@ use image::{DynamicImage, GenericImage, ImageBuffer, Pixel};
 pub mod feat;
 pub mod imgproc;
 pub mod linalg;
+pub mod utility;
 
 #[macro_export]
 macro_rules! process_dynamic_image {
