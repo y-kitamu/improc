@@ -1,3 +1,4 @@
+//! FAST corner detector + brief特徴量 + brute force matchingのsample
 use cgmath::Point3;
 use clap::{App, Arg};
 use image::{DynamicImage, GenericImageView};
