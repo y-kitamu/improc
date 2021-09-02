@@ -65,6 +65,20 @@ impl FASTCornerDetector {
             use_nms,
         }
     }
+
+    fn calc_direction(&self, raw: &Vec<u8>, w: usize, cx: usize, cy: usize) -> f32 {
+        let mut m10 = 0;
+        let mut m01 = 0;
+        let (min_x, max_x) = (cx - self.radius as usize, cx + self.radius as usize);
+        let (min_y, max_y) = (cy - self.radius as usize, cy + self.radius as usize);
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                m10 += (x as isize - cx as isize) * raw[w * y + x] as isize;
+                m01 += (y as isize - cy as isize) * raw[w * y + x] as isize;
+            }
+        }
+        (m01 as f32).atan2(m10 as f32)
+    }
 }
 
 impl KeypointDetector for FASTCornerDetector {
@@ -115,7 +129,8 @@ impl KeypointDetector for FASTCornerDetector {
                     }
                 }
                 if crf > self.threshold {
-                    key_points.push(KeyPoint::new(x, y, crf, level));
+                    let direction = self.calc_direction(&raw, w, x, y);
+                    key_points.push(KeyPoint::new(x, y, crf, level, direction));
                 }
             }
         }
@@ -309,5 +324,22 @@ mod tests {
             assert!((p0.x + p1.x).abs() < 1e-5);
             assert!((p0.y + p1.y).abs() < 1e-5);
         }
+    }
+
+    #[test]
+    fn test_calc_direction() {
+        let fast = FASTCornerDetector::new(1, 0.0, 1, false);
+        #[rustfmt::skip]
+        let vec: Vec<u8> = vec![
+            0, 0, 0,
+            0, 0, 0,
+            0, 0, 1,
+        ];
+        let dir = fast.calc_direction(&vec, 3, 1, 1);
+        assert!(
+            (dir - std::f32::consts::FRAC_PI_4).abs() < 1e-5,
+            "direction = {}",
+            dir
+        );
     }
 }

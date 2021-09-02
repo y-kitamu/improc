@@ -91,7 +91,7 @@ mod tests {
         let n_dim = 5;
         let lhs_descs: Vec<Descriptor<BitVec>> = (0..=n_dim)
             .map(|i| Descriptor::<BitVec> {
-                kpt: KeyPoint::new(i, i, 0.0f32, 0),
+                kpt: KeyPoint::new(i, i, 0.0f32, 0, 0.0),
                 value: (0..n_dim - i).fold(bitvec![0; i], |mut acc, _idx| {
                     acc.push(true);
                     acc
@@ -100,19 +100,19 @@ mod tests {
             .collect();
         let rhs_descs = vec![
             Descriptor::<BitVec> {
-                kpt: KeyPoint::new(0, 0, 0.0f32, 0),
+                kpt: KeyPoint::new(0, 0, 0.0f32, 0, 0.0),
                 value: bitvec![0; n_dim],
             },
             Descriptor::<BitVec> {
-                kpt: KeyPoint::new(1, 1, 0.0f32, 0),
+                kpt: KeyPoint::new(1, 1, 0.0f32, 0, 0.0),
                 value: bitvec![1, 1, 0, 1, 1],
             },
             Descriptor::<BitVec> {
-                kpt: KeyPoint::new(2, 2, 0.0f32, 0),
+                kpt: KeyPoint::new(2, 2, 0.0f32, 0, 0.0),
                 value: bitvec![1, 0, 0, 1, 1],
             },
             Descriptor::<BitVec> {
-                kpt: KeyPoint::new(3, 3, 0.0f32, 0),
+                kpt: KeyPoint::new(3, 3, 0.0f32, 0, 0.0),
                 value: bitvec![1; n_dim],
             },
         ];

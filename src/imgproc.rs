@@ -484,11 +484,11 @@ mod tests {
     #[test]
     fn test_nms() {
         let kpts = vec![
-            KeyPoint::new(3, 3, 10.0, 1),
-            KeyPoint::new(3, 4, 12.5, 1),
-            KeyPoint::new(3, 6, 11.8, 1),
-            KeyPoint::new(5, 4, 11.5, 1),
-            KeyPoint::new(3, 2, 8.0, 1),
+            KeyPoint::new(3, 3, 10.0, 1, 0.0),
+            KeyPoint::new(3, 4, 12.5, 1, 0.0),
+            KeyPoint::new(3, 6, 11.8, 1, 0.0),
+            KeyPoint::new(5, 4, 11.5, 1, 0.0),
+            KeyPoint::new(3, 2, 8.0, 1, 0.0),
         ];
         let supressed = nms(&kpts, 3);
         assert_eq!(supressed.len(), 4);
