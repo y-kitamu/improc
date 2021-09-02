@@ -291,15 +291,6 @@ where
         }
     }
 
-    (0..height).for_each(|y| {
-        println!(
-            "{:?}",
-            (0..width)
-                .map(|x| target[y * y_stride + x * x_stride])
-                .collect::<Vec<u32>>()
-        );
-    });
-
     let mut dst: Vec<u8> = Vec::with_capacity((img.width() * img.height()) as usize * x_stride);
     let rt_off = kernel_size as usize * x_stride;
     let lb_off = kernel_size as usize * y_stride;

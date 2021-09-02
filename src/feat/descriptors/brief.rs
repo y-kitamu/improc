@@ -3,7 +3,10 @@ use image::{GrayImage, Luma, Pixel};
 use nalgebra::Point2;
 use rand_distr::{Distribution, Normal};
 
-use crate::{feat::keypoints::KeyPoint, imgproc::gaussian};
+use crate::{
+    feat::keypoints::KeyPoint,
+    imgproc::{gaussian, median_filter},
+};
 
 use super::{Descriptor, Extractor};
 
@@ -46,8 +49,10 @@ impl Brief {
 
 impl Extractor<BitVec> for Brief {
     fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BitVec>> {
+        // let gauss =
+        //     image::GrayImage::from_raw(img.width(), img.height(), gaussian(img, 9, 3.05)).unwrap();
         let gauss =
-            image::GrayImage::from_raw(img.width(), img.height(), gaussian(img, 9, 3.05)).unwrap();
+            image::GrayImage::from_raw(img.width(), img.height(), median_filter(img, 5)).unwrap();
         let data = gauss.as_raw();
         let stride_x = Luma::<u8>::CHANNEL_COUNT as usize;
         let stride_y = gauss.width() as usize * stride_x;
