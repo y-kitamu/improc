@@ -255,6 +255,73 @@ where
     gray
 }
 
+pub fn median_filter<P, Container>(img: &ImageBuffer<P, Container>, kernel_size: u32) -> Vec<u8>
+where
+    P: Pixel + 'static,
+    P::Subpixel: 'static,
+    Container: Deref<Target = [P::Subpixel]>,
+{
+    let x_stride = P::CHANNEL_COUNT as usize;
+    let padded = padding(img, kernel_size as usize / 2 + 1);
+    let width = (img.width() + (kernel_size / 2 + 1) * 2) as usize;
+    let height = (img.height() + (kernel_size / 2 + 1) * 2) as usize;
+    let y_stride = x_stride * width;
+    let mut target: Vec<u32> = vec![0; y_stride * height];
+
+    for y in 0..height {
+        let y_off = y * y_stride;
+        if y > 0 {
+            for c in 0..x_stride {
+                target[y_off + c] = target[y_off + c - y_stride] + padded[y_off + c] as u32;
+            }
+        }
+        for x in 1..width {
+            let off = y_off + x * x_stride;
+            if y == 0 {
+                for c in 0..x_stride {
+                    target[off + c] = target[off + c - x_stride] + padded[off + c] as u32;
+                }
+            } else {
+                for c in 0..x_stride {
+                    target[off + c] += target[off + c - x_stride] + target[off + c - y_stride]
+                        - target[off + c - x_stride - y_stride]
+                        + padded[off + c] as u32;
+                }
+            }
+        }
+    }
+
+    (0..height).for_each(|y| {
+        println!(
+            "{:?}",
+            (0..width)
+                .map(|x| target[y * y_stride + x * x_stride])
+                .collect::<Vec<u32>>()
+        );
+    });
+
+    let mut dst: Vec<u8> = Vec::with_capacity((img.width() * img.height()) as usize * x_stride);
+    let rt_off = kernel_size as usize * x_stride;
+    let lb_off = kernel_size as usize * y_stride;
+    let rb_off = kernel_size as usize * (y_stride + x_stride);
+    let area = kernel_size * kernel_size;
+    for y in 0..img.height() as usize {
+        let y_off = y_stride * y;
+        for x in 0..img.width() as usize {
+            let off = y_off + x_stride * x;
+            for c in 0..x_stride {
+                dst.push(
+                    ((target[off + rb_off + c] + target[off + c]
+                        - target[off + lb_off + c]
+                        - target[off + rt_off + c])
+                        / area) as u8,
+                );
+            }
+        }
+    }
+    dst
+}
+
 /// resize `img` to size (width, height).
 pub fn resize<P, Container>(img: &ImageBuffer<P, Container>, width: u32, height: u32) -> Vec<u8>
 where
@@ -458,6 +525,24 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_median_filter() {
+        let length: u32 = 10;
+        let test_image =
+            image::RgbImage::from_fn(length, length, |x, y| image::Rgb([x as u8, y as u8, 0]));
+        let kernel: u32 = 5;
+        let res = median_filter(&test_image, kernel);
+        let x_stride: usize = 3;
+        let y_stride: usize = length as usize * x_stride;
+
+        assert_eq!(res[0], 0);
+        assert_eq!(res[1], 0);
+        assert_eq!(res[2], 0);
+        assert_eq!(res[y_stride * 2 + x_stride * 2 as usize + 0], 2);
+        assert_eq!(res[y_stride * 2 + x_stride * 2 as usize + 1], 2);
+        assert_eq!(res[y_stride * 2 + x_stride * 2 as usize + 2], 0);
     }
 
     #[test]
