@@ -44,6 +44,21 @@ where
     vec
 }
 
+/// Args:
+/// - rotation_degree : rotation angle in degree.
+/// - center : rotation center (x, y).
+/// - scale :
+pub fn get_rotation_matrix(rotation_degree: f32, center: (f32, f32), scale: f32) -> Matrix2x3<f32> {
+    let rad = rotation_degree / 180.0 * std::f32::consts::PI;
+    let sin = scale * rad.sin();
+    let cos = scale * rad.cos();
+    let (dx, dy) = center;
+    matrix![
+        cos, -sin, dx - cos * dx + sin * dy;
+        sin, cos, dy - sin * dx - cos * dy;
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,5 +165,41 @@ mod tests {
         assert!((merged.m21 - 2.0) < 1e-5, "merged.m21 = {}", merged.m21);
         assert!((merged.m22 - 6.0) < 1e-5, "merged.m22 = {}", merged.m22);
         assert!((merged.m23 - 3.5) < 1e-5, "merged.m23 = {}", merged.m23);
+    }
+
+    #[test]
+    fn test_get_rotation_matrix() {
+        let rot_degree = 60.0f32;
+        let rot_rad = rot_degree / 180.0 * std::f32::consts::PI;
+        let center = (5.0f32, 10.0f32);
+        let affine_mat = get_rotation_matrix(rot_degree, center, 1.0);
+
+        assert!(
+            (affine_mat.m11 - rot_rad.cos()).abs() < 1e-5,
+            "m11 = {}",
+            affine_mat.m11
+        );
+        assert!(
+            (affine_mat.m12 + rot_rad.sin()).abs() < 1e-5,
+            "m12 = {}",
+            affine_mat.m12
+        );
+        assert!(
+            (affine_mat.m21 - rot_rad.sin()).abs() < 1e-5,
+            "m21 = {}",
+            affine_mat.m21
+        );
+        assert!(
+            (affine_mat.m22 - rot_rad.cos()).abs() < 1e-5,
+            "m22 = {}",
+            affine_mat.m22
+        );
+
+        let pt: Vector2<f32> = vector![6.0f32, 10.0f32];
+        let dst = affine_transform(&affine_mat, &pt);
+        assert!((dst.x - 5.5).abs() < 1e-5);
+        let pt: Vector2<f32> = vector![5.0f32, 5.0f32];
+        let dst = affine_transform(&affine_mat, &pt);
+        assert!((dst.y - 7.5).abs() < 1e-5);
     }
 }
