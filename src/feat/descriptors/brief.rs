@@ -45,6 +45,29 @@ impl Brief {
             binary_test_pairs,
         }
     }
+
+    pub fn calc_brief(
+        &self,
+        kpt: &KeyPoint,
+        data: &Vec<u8>,
+        stride_x: usize,
+        stride_y: usize,
+        test_pairs: &Vec<(Point2<f32>, Point2<f32>)>,
+    ) -> Descriptor<BitVec> {
+        let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);
+        let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
+        for (p0, p1) in test_pairs {
+            let (dx0, dy0) = (p0.x as usize, p0.y as usize);
+            let (dx1, dy1) = (p1.x as usize, p1.y as usize);
+            let idx0 = (cy + dy0) * stride_y + (cx + dx0) * stride_x;
+            let idx1 = (cy + dy1) * stride_y + (cx + dx1) * stride_x;
+            desc.push(data[idx0] < data[idx1])
+        }
+        Descriptor {
+            kpt: kpt.clone(),
+            value: desc,
+        }
+    }
 }
 
 impl Extractor<BitVec> for Brief {
@@ -59,7 +82,6 @@ impl Extractor<BitVec> for Brief {
         let mut descriptors: Vec<Descriptor<BitVec>> = Vec::new();
 
         for kpt in kpts {
-            let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
             let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);
             if cx < (self.patch_size / 2) as usize
                 || cy < (self.patch_size / 2) as usize
@@ -68,18 +90,13 @@ impl Extractor<BitVec> for Brief {
             {
                 continue;
             }
-            for (p0, p1) in &self.binary_test_pairs {
-                let (dx0, dy0) = (p0.x as usize, p0.y as usize);
-                let (dx1, dy1) = (p1.x as usize, p1.y as usize);
-                let idx0 = (cy + dy0) * stride_y + (cx + dx0) * stride_x;
-                let idx1 = (cy + dy1) * stride_y + (cx + dx1) * stride_x;
-                desc.push(data[idx0] < data[idx1])
-            }
-            let desc = Descriptor {
-                kpt: kpt.clone(),
-                value: BitVec::new(),
-            };
-            descriptors.push(desc);
+            descriptors.push(self.calc_brief(
+                &kpt,
+                &data,
+                stride_x,
+                stride_y,
+                &self.binary_test_pairs,
+            ));
         }
 
         descriptors
@@ -88,6 +105,10 @@ impl Extractor<BitVec> for Brief {
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::Point2;
+
+    use crate::feat::keypoints::KeyPoint;
+
     use super::Brief;
 
     #[test]
@@ -110,5 +131,29 @@ mod tests {
             assert!(p1.y as i32 <= max);
             assert!(p0.x as i32 != p1.x as i32 || p0.y as i32 != p1.y as i32);
         }
+    }
+
+    #[test]
+    fn test_calc_brief() {
+        let patch_size = 31;
+        let n_pairs = 256;
+        let kpt = KeyPoint::new(0, 0, 1.0, 0, 0.0);
+        let data: Vec<u8> = vec![1, 2, 3, 0, 5, 6];
+        let x_stride = 1;
+        let y_stride = 3;
+        let brief = Brief::new(patch_size, n_pairs);
+        let test_pairs: Vec<(Point2<f32>, Point2<f32>)> = vec![
+            (
+                Point2::<f32>::new(0.0f32, 0.0f32),
+                Point2::<f32>::new(1.0f32, 0.0f32),
+            ),
+            (
+                Point2::<f32>::new(0.0f32, 0.0f32),
+                Point2::<f32>::new(0.0f32, 1.0f32),
+            ),
+        ];
+        let desc = brief.calc_brief(&kpt, &data, x_stride, y_stride, &test_pairs);
+        assert_eq!(desc.value[0] as usize, 1);
+        assert_eq!(desc.value[1] as usize, 0);
     }
 }

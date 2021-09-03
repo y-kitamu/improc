@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use image::{ColorType, ImageBuffer, Pixel};
-use nalgebra::{vector, Matrix2x3};
+use nalgebra::{vector, Matrix2x3, Point2};
 use num_traits::ToPrimitive;
 
 use crate::feat::keypoints::KeyPoint;
@@ -27,7 +27,7 @@ where
 
     for y in 0..img.height() {
         for x in 0..img.width() {
-            let pt = linalg::affine_transform(&inv_affine_mat, &vector![x as f32, y as f32]);
+            let pt = linalg::warp_point(&inv_affine_mat, &Point2::<f32>::new(x as f32, y as f32));
             // TODO: functionalize
             let mut ix = pt.x.floor() as isize;
             let mut iy = pt.y.floor() as isize;

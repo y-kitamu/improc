@@ -3,6 +3,7 @@ use image::GrayImage;
 use super::{keypoints::KeyPoint, Distance};
 
 pub mod brief;
+pub mod steered_brief;
 
 /// Feature Descriptor
 #[derive(Clone)]

@@ -33,6 +33,10 @@ impl KeyPoint {
     pub fn crf(&self) -> f32 {
         self.cornerness
     }
+
+    pub fn direction(&self) -> f32 {
+        self.direction
+    }
 }
 
 pub trait KeypointDetector {

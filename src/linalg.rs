@@ -1,6 +1,6 @@
 use std::ops::{Add, Mul};
 
-use nalgebra::{matrix, vector, ComplexField, Matrix2, Matrix2x3, Scalar, Vector2};
+use nalgebra::{matrix, vector, ComplexField, Matrix2, Matrix2x3, Point2, Scalar, Vector2};
 
 /// calculate inverse of given affine matrix.
 pub fn inv_affine_mat<T: Scalar + ComplexField>(affine_mat: &Matrix2x3<T>) -> Matrix2x3<T> {
@@ -33,15 +33,14 @@ pub fn merge_affine_transforms<T: Scalar + ComplexField>(
 }
 
 ///
-pub fn affine_transform<'a, T>(affine_mat: &Matrix2x3<T>, pt: &Vector2<T>) -> Vector2<T>
+pub fn warp_point<'a, T>(affine_mat: &Matrix2x3<T>, pt: &Point2<T>) -> Point2<T>
 where
     T: Scalar + ComplexField + Add + Mul + Copy,
 {
-    let vec: Vector2<T> = vector![
+    Point2::<T>::new(
         affine_mat.m11 * pt.x + affine_mat.m12 * pt.y + affine_mat.m13,
-        affine_mat.m21 * pt.x + affine_mat.m22 * pt.y + affine_mat.m23
-    ];
-    vec
+        affine_mat.m21 * pt.x + affine_mat.m22 * pt.y + affine_mat.m23,
+    )
 }
 
 /// Args:
@@ -61,6 +60,8 @@ pub fn get_rotation_matrix(rotation_degree: f32, center: (f32, f32), scale: f32)
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::Point2;
+
     use super::*;
 
     #[test]
@@ -69,8 +70,9 @@ mod tests {
             2.0, 0.5, 1.0;
             -1.0, 0.8, -1.5;
         ];
-        let pt: Vector2<f32> = vector![1.0, -0.5];
-        let dst = affine_transform(&affine_mat, &pt);
+        // let pt: Vector2<f32> = vector![1.0, -0.5];
+        let pt = Point2::new(1.0, -0.5);
+        let dst = warp_point(&affine_mat, &pt);
         assert!((dst.x - 2.75).abs() < 1e-5);
         assert!((dst.y + 2.9).abs() < 1e-5);
     }
@@ -195,11 +197,11 @@ mod tests {
             affine_mat.m22
         );
 
-        let pt: Vector2<f32> = vector![6.0f32, 10.0f32];
-        let dst = affine_transform(&affine_mat, &pt);
+        let pt = Point2::<f32>::new(6.0f32, 10.0f32);
+        let dst = warp_point(&affine_mat, &pt);
         assert!((dst.x - 5.5).abs() < 1e-5);
-        let pt: Vector2<f32> = vector![5.0f32, 5.0f32];
-        let dst = affine_transform(&affine_mat, &pt);
+        let pt = Point2::<f32>::new(5.0f32, 5.0f32);
+        let dst = warp_point(&affine_mat, &pt);
         assert!((dst.y - 7.5).abs() < 1e-5);
     }
 }
