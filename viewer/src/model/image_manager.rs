@@ -2,10 +2,10 @@ use std::path::Path;
 use std::{collections::HashMap, os::raw::c_void};
 
 use anyhow::Result;
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, EncodableLayout, GenericImageView};
 use log::warn;
 
-use crate::vertex::Vertex;
+use crate::{utility::convert_to_rgb, vertex::Vertex};
 
 use super::image::Image;
 
@@ -50,17 +50,29 @@ impl ImageManager {
             );
             return;
         }
-        let format = match image {
-            image::DynamicImage::ImageLuma8(_) => gl::RED,
-            image::DynamicImage::ImageLumaA8(_) => gl::RG,
-            image::DynamicImage::ImageRgb8(_) => gl::RGB,
-            image::DynamicImage::ImageRgba8(_) => gl::RGBA,
-            image::DynamicImage::ImageBgr8(_) => gl::RGB,
-            image::DynamicImage::ImageBgra8(_) => gl::RGBA,
-            _ => gl::RGB,
-        };
 
+        let (format, image) = match image {
+            DynamicImage::ImageLuma8(img) => {
+                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
+            }
+            DynamicImage::ImageLumaA8(img) => {
+                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
+            }
+            DynamicImage::ImageLuma16(img) => {
+                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
+            }
+            DynamicImage::ImageLumaA16(img) => {
+                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
+            }
+            DynamicImage::ImageRgb8(_)
+            | DynamicImage::ImageBgr8(_)
+            | DynamicImage::ImageRgb16(_) => (gl::RGB, image.clone()),
+            DynamicImage::ImageRgba8(_)
+            | DynamicImage::ImageBgra8(_)
+            | DynamicImage::ImageRgba16(_) => (gl::RGBA, image.clone()),
+        };
         let data = image.as_bytes();
+
         let mut texture = 0;
         unsafe {
             gl::GenTextures(1, &mut texture);

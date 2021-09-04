@@ -25,6 +25,7 @@ pub mod app;
 mod model;
 mod presenter;
 mod shader;
+mod utility;
 mod vertex;
 mod view;
 
