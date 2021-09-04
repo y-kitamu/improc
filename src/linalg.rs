@@ -47,10 +47,9 @@ where
 /// - rotation_degree : rotation angle in degree.
 /// - center : rotation center (x, y).
 /// - scale :
-pub fn get_rotation_matrix(rotation_degree: f32, center: (f32, f32), scale: f32) -> Matrix2x3<f32> {
-    let rad = rotation_degree / 180.0 * std::f32::consts::PI;
-    let sin = scale * rad.sin();
-    let cos = scale * rad.cos();
+pub fn get_rotation_matrix(rotation_rad: f32, center: (f32, f32), scale: f32) -> Matrix2x3<f32> {
+    let sin = scale * rotation_rad.sin();
+    let cos = scale * rotation_rad.cos();
     let (dx, dy) = center;
     matrix![
         cos, -sin, dx - cos * dx + sin * dy;
@@ -174,7 +173,7 @@ mod tests {
         let rot_degree = 60.0f32;
         let rot_rad = rot_degree / 180.0 * std::f32::consts::PI;
         let center = (5.0f32, 10.0f32);
-        let affine_mat = get_rotation_matrix(rot_degree, center, 1.0);
+        let affine_mat = get_rotation_matrix(rot_rad, center, 1.0);
 
         assert!(
             (affine_mat.m11 - rot_rad.cos()).abs() < 1e-5,
