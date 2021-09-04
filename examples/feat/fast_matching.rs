@@ -68,7 +68,7 @@ fn main() {
     );
 
     let (descs0, descs1) = timer!("Brief descriptor", {
-        let brief = Brief::new(31, 256);
+        let brief = Brief::new(31, 5, 256);
         let descs0 = brief.compute(&gray, &feats0);
         let descs1 = brief.compute(&shift, &feats1);
         (descs0, descs1)
@@ -109,13 +109,13 @@ fn main() {
         .map(|pair| vec![pair[0].0.clone(), pair[1].0.clone()])
         .collect();
     println!("num matches = {}", mps.len());
-    // let app = viewer::app::App::new(1280, 960).unwrap();
-    // app.add_image(&image, "color")
-    //     .add_image(&DynamicImage::ImageLuma8(gray), "gray")
-    //     .add_image(&DynamicImage::ImageLuma8(shift), "shift")
-    //     .add_points("gray", &pts[0], 1.0, 1.0, 0.0)
-    //     .add_points("shift", &pts[1], 1.0, 1.0, 0.0)
-    //     .add_point_relations(&mps, &ids)
-    //     .run()
-    //     .unwrap();
+    let app = viewer::app::App::new(1280, 960).unwrap();
+    app.add_image(&image, "color")
+        .add_image(&DynamicImage::ImageLuma8(gray), "gray")
+        .add_image(&DynamicImage::ImageLuma8(shift), "shift")
+        .add_points("gray", &pts[0], 1.0, 1.0, 0.0)
+        .add_points("shift", &pts[1], 1.0, 1.0, 0.0)
+        .add_point_relations(&mps, &ids)
+        .run()
+        .unwrap();
 }
