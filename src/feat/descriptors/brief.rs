@@ -17,6 +17,7 @@ fn clip_point(patch_size: u32, pt: f32) -> f32 {
 
 pub struct Brief {
     patch_size: u32,
+    median_kernel_size: u32,
     pub binary_test_pairs: Vec<(Point2<f32>, Point2<f32>)>,
 }
 
@@ -24,7 +25,7 @@ impl Brief {
     /// Args
     /// - patch_size : 特徴量を計算するpatch size。論文だと31
     /// - n_binary_test : number of binary test to be calculated。論文だと256
-    pub fn new(patch_size: u32, n_binary_test: u32) -> Self {
+    pub fn new(patch_size: u32, median_kernel_size: u32, n_binary_test: u32) -> Self {
         let mut rng = rand::thread_rng();
         let normal = Normal::new(0.0, patch_size as f32 / 5.0).unwrap();
         let mut binary_test_pairs: Vec<(Point2<f32>, Point2<f32>)> =
@@ -42,6 +43,7 @@ impl Brief {
         }
         Brief {
             patch_size,
+            median_kernel_size,
             binary_test_pairs,
         }
     }
@@ -74,8 +76,12 @@ impl Extractor<BitVec> for Brief {
     fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BitVec>> {
         // let gauss =
         //     image::GrayImage::from_raw(img.width(), img.height(), gaussian(img, 9, 3.05)).unwrap();
-        let gauss =
-            image::GrayImage::from_raw(img.width(), img.height(), median_filter(img, 5)).unwrap();
+        let gauss = image::GrayImage::from_raw(
+            img.width(),
+            img.height(),
+            median_filter(img, self.median_kernel_size),
+        )
+        .unwrap();
         let data = gauss.as_raw();
         let stride_x = Luma::<u8>::CHANNEL_COUNT as usize;
         let stride_y = gauss.width() as usize * stride_x;
@@ -107,7 +113,7 @@ impl Extractor<BitVec> for Brief {
 mod tests {
     use nalgebra::Point2;
 
-    use crate::feat::keypoints::KeyPoint;
+    use crate::feat::{descriptors::Extractor, keypoints::KeyPoint};
 
     use super::Brief;
 
@@ -115,8 +121,10 @@ mod tests {
     fn test_brief_new() {
         let patch_size = 31;
         let n_pairs = 256;
-        let brief = Brief::new(patch_size, n_pairs);
+        let brief = Brief::new(patch_size, 5, n_pairs);
         assert_eq!(brief.binary_test_pairs.len(), n_pairs as usize);
+        assert_eq!(brief.patch_size, patch_size);
+        assert_eq!(brief.median_kernel_size, 5);
 
         let min: i32 = -(patch_size as i32 / 2);
         let max: i32 = patch_size as i32 / 2;
@@ -141,7 +149,7 @@ mod tests {
         let data: Vec<u8> = vec![1, 2, 3, 0, 5, 6];
         let x_stride = 1;
         let y_stride = 3;
-        let brief = Brief::new(patch_size, n_pairs);
+        let brief = Brief::new(patch_size, 5, n_pairs);
         let test_pairs: Vec<(Point2<f32>, Point2<f32>)> = vec![
             (
                 Point2::<f32>::new(0.0f32, 0.0f32),
@@ -155,5 +163,30 @@ mod tests {
         let desc = brief.calc_brief(&kpt, &data, x_stride, y_stride, &test_pairs);
         assert_eq!(desc.value[0] as usize, 1);
         assert_eq!(desc.value[1] as usize, 0);
+    }
+
+    #[test]
+    fn test_compute() {
+        let patch_size = 3;
+        let n_pairs = 3;
+        let mut brief = Brief::new(patch_size, 3, n_pairs);
+
+        let length = 5;
+        let img = image::GrayImage::from_fn(length, length, |x, y| image::Luma([(x + y) as u8]));
+        let kpts = vec![
+            KeyPoint::new(2, 2, 1.0, 0, 0.0),
+            KeyPoint::new(0, 0, 1.0, 0, 0.0),
+        ];
+
+        brief.binary_test_pairs = vec![(
+            Point2::<f32>::new(0.0f32, 0.0f32),
+            Point2::<f32>::new(2.0f32, 2.0f32),
+        )];
+        let descs = brief.compute(&img, &kpts);
+        assert_eq!(descs.len(), 1);
+        assert!((descs[0].kpt.x() - 2.0).abs() < 1.0e-5);
+        assert!((descs[0].kpt.y() - 2.0).abs() < 1.0e-5);
+        assert_eq!(descs[0].value.len(), 1);
+        assert_eq!(descs[0].value[0] as usize, 1);
     }
 }
