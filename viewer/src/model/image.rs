@@ -184,10 +184,17 @@ mod tests {
         let other_key = "other";
         let other_img = Image::new(other_key, 1u32, 1080u32, 960u32);
         let image = image.add_point_relation(1280.0, 1080.0, &other_img, 540.0, 240.0);
+        let image = image.add_point_relation(1200.0, 1080.0, &other_img, 540.0, 240.0);
+        assert_eq!(image.points.len(), 1);
         let rel = image.points[0].get_relation(other_key);
         assert!(rel.is_some());
         let rel = rel.unwrap();
         assert!((rel.x - 0.0).abs() < 1e-5, "rel.x = {}", rel.x);
         assert!((rel.y - 0.5).abs() < 1e-5, "rel.y = {}", rel.y);
+
+        let res = image.get_points_vertex();
+        assert!(res.is_none());
+        let res = image.get_point_relation_vertex("other");
+        assert!(res.is_none());
     }
 }

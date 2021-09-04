@@ -6,6 +6,8 @@
 //! `app` module is user interface.
 //! `shader` module prepare and render glsl shader.
 
+use std::collections::HashMap;
+
 /// `$e`(Array of String)で指定したshaderをcompileし、
 /// 対応するstruct(`$t`)のobjectのhashmap (key: String, val: `$t`)を返す.
 macro_rules! load_shaders {
@@ -25,3 +27,27 @@ mod presenter;
 mod shader;
 mod vertex;
 mod view;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Test {
+        key: String,
+    }
+
+    impl Test {
+        fn new(key: &str) -> Self {
+            Test {
+                key: key.to_string(),
+            }
+        }
+    }
+
+    #[test]
+    fn test_load_shader_macro() {
+        let map = load_shaders!(vec!["foo", "bar"], Test);
+        assert_eq!(&map["foo"].key, "foo");
+        assert_eq!(&map["bar"].key, "bar");
+    }
+}
