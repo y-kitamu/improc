@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
 use imgui::im_str;
-use sdl2::event::Event;
+use sdl2::{event::Event, mouse::MouseWheelDirection};
 
 use crate::{
     model::image_manager::ImageManager,
     shader::{image_shader::ImageShader, point_shader::PointShader},
+    utility::{get_mouse_pos, scale_matrix},
     vertex::Vertex,
 };
 
@@ -69,7 +70,15 @@ impl PresenterMode for DefaultPresenterMode {
                 y,
                 direction,
             } => {
-                current_shader.on_mouse_wheel_event(timestamp, window_id, which, x, y, direction);
+                let (mx, my) = get_mouse_pos();
+                let cx = mx as f32 / fbo_width as f32 * 2.0 - 1.0;
+                let cy = (fbo_height as f32 - my as f32) / fbo_height as f32 * 2.0 - 1.0;
+                let mut scale = 1.0f32 + *y as f32 / 10.0f32;
+                if *direction == MouseWheelDirection::Flipped {
+                    scale = 1.0f32 / scale;
+                }
+                current_shader.model_mat.value =
+                    scale_matrix(&current_shader.model_mat.value, cx, cy, scale);
                 true
             }
             Event::MouseButtonDown {

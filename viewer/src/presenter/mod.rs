@@ -98,7 +98,7 @@ impl Presenter {
             gl::Enable(gl::PROGRAM_POINT_SIZE);
 
             gl::Viewport(0, 0, width as i32, height as i32);
-            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();

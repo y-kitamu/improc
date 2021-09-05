@@ -5,7 +5,8 @@ layout (lines) in;
 layout (line_strip, max_vertices=2) out;
 
 void main() {
-    if (gl_in[0].gl_Position.x * gl_in[1].gl_Position.x < 0 &&
+    if (gl_in[0].gl_Position.x < gl_in[1].gl_Position.x &&
+        gl_in[0].gl_Position.x * gl_in[1].gl_Position.x < 0 &&
         abs(gl_in[0].gl_Position.x) < 1.0 &&
         abs(gl_in[0].gl_Position.y) < 1.0 &&
         abs(gl_in[1].gl_Position.x) < 1.0 &&

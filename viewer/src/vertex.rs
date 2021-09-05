@@ -27,7 +27,6 @@ macro_rules! draw {
 pub fn create_simple_vertex() -> Vertex {
     #[rustfmt::skip]
     let buf_array: [f32; 30] = [
-        // 0
         -1.0, -1.0, 1.0, 0.0, 0.0,
         -1.0, 1.0, 1.0, 0.0, 1.0,
         1.0, 1.0, 1.0, 1.0, 1.0,

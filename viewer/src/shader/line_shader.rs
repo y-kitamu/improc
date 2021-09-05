@@ -1,12 +1,15 @@
 use std::ffi::CString;
 
-use crate::shader::{set_mat4_array, set_vec3};
+use crate::{
+    shader::{set_mat4_array, set_vec3},
+    Vector3,
+};
 
-use super::{compile_shader, image_shader::ImageShader, UniformVariable, Vector3};
+use super::{compile_shader, image_shader::ImageShader, UniformVariable};
 
 pub struct LineShader {
     id: u32,
-    color: UniformVariable<Vector3>,
+    pub color: UniformVariable<Vector3>,
 }
 
 impl LineShader {

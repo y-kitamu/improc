@@ -6,12 +6,11 @@ use anyhow::Result;
 use cgmath::{Array, Matrix};
 use gl::types::*;
 
+use crate::{Matrix4, Vector3};
+
 pub mod image_shader;
 pub mod line_shader;
 pub mod point_shader;
-
-type Vector3 = cgmath::Vector3<f32>;
-type Matrix4 = cgmath::Matrix4<f32>;
 
 pub struct UniformVariable<T> {
     pub name: CString, // uniform variable name in glsl program.
@@ -125,11 +124,12 @@ unsafe fn check_compile_errors(shader: u32, type_: &str) {
 }
 
 unsafe fn set_vec3(shader_id: u32, u_var: &UniformVariable<Vector3>) {
+    // println!("shader_id : {}, value = {:?}", shader_id, u_var.value);
     gl::Uniform3fv(
         gl::GetUniformLocation(shader_id, u_var.name.as_ptr()),
         1,
         u_var.value.as_ptr(),
-    )
+    );
 }
 
 unsafe fn set_mat4(shader_id: u32, u_var: &UniformVariable<Matrix4>) {

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
 use imgui::im_str;
-use sdl2::{event::Event, sys::SDL_GetMouseState};
+use sdl2::{event::Event, mouse::MouseWheelDirection, sys::SDL_GetMouseState};
 
 use crate::{
     model::image_manager::ImageManager,
     shader::{image_shader::ImageShader, line_shader::LineShader, point_shader::PointShader},
+    utility::{get_mouse_pos, scale_matrix},
     vertex::Vertex,
 };
 
@@ -26,13 +27,6 @@ pub struct DualImagePresenter {
     current_image_keys: (String, String),
     current_points_shader_key: String,
     point_relation_shader: LineShader,
-}
-
-fn get_mouse_pos() -> (u32, u32) {
-    let mut x = 0;
-    let mut y = 0;
-    let _: u32 = unsafe { SDL_GetMouseState(&mut x, &mut y) };
-    (x as u32, y as u32)
 }
 
 impl DualImagePresenter {
@@ -105,7 +99,7 @@ impl DualImagePresenter {
 
     fn get_current_shader(&mut self, fbo_width: u32) -> &mut ImageShader {
         let (x, _y) = get_mouse_pos();
-        let current_shader = if x < fbo_width / 2 {
+        let current_shader = if (x as u32) < fbo_width / 2 {
             self.shader_map_left
                 .get_mut(&self.current_shader_key)
                 .unwrap()
@@ -134,8 +128,21 @@ impl PresenterMode for DualImagePresenter {
                 y,
                 direction,
             } => {
+                let (mx, my) = get_mouse_pos();
+                let half = fbo_width as f32 / 2.0;
+                let cy = (fbo_height as f32 - my as f32) / fbo_height as f32 * 2.0 - 1.0;
+                let cx = if (mx as u32) < fbo_width / 2 {
+                    (mx as f32) / half * 2.0 - 1.0
+                } else {
+                    (mx as f32 - half) / half * 2.0 - 1.0
+                };
+                let mut scale = 1.0f32 + *y as f32 / 10.0f32;
+                if *direction == MouseWheelDirection::Flipped {
+                    scale = 1.0f32 / scale;
+                }
                 let current_shader = self.get_current_shader(fbo_width);
-                current_shader.on_mouse_wheel_event(timestamp, window_id, which, x, y, direction);
+                current_shader.model_mat.value =
+                    scale_matrix(&current_shader.model_mat.value, cx, cy, scale);
                 true
             }
             Event::MouseButtonDown {
@@ -271,6 +278,17 @@ impl PresenterMode for DualImagePresenter {
                             .value,
                     );
                 ui.separator();
+
+                ui.text(im_str!("Line parameter"));
+                imgui::Slider::new(im_str!("Color (R)"))
+                    .range(0.0..=1.0)
+                    .build(&ui, &mut self.point_relation_shader.color.value.x);
+                imgui::Slider::new(im_str!("Color (G)"))
+                    .range(0.0..=1.0)
+                    .build(&ui, &mut self.point_relation_shader.color.value.y);
+                imgui::Slider::new(im_str!("Color (B)"))
+                    .range(0.0..=1.0)
+                    .build(&ui, &mut self.point_relation_shader.color.value.z);
             });
     }
 }

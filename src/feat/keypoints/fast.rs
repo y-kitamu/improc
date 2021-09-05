@@ -138,6 +138,7 @@ impl KeypointDetector for FASTCornerDetector {
             let key_points = nms(&key_points, self.radius * 2 + 1);
             return key_points;
         }
+        key_points.sort_by(|lhs, rhs| lhs.crf().partial_cmp(&rhs.crf()).unwrap());
         key_points
     }
 }

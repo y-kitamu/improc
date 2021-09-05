@@ -1,11 +1,13 @@
 use cgmath::One;
 use gl;
-use sdl2::mouse::{MouseButton, MouseState, MouseWheelDirection};
+use sdl2::mouse::{MouseButton, MouseState};
 
 use std::ffi::CString;
 use std::str;
 
-use super::{compile_shader, set_mat4, Matrix4, UniformVariable};
+use crate::Matrix4;
+
+use super::{compile_shader, set_mat4, UniformVariable};
 
 pub struct ImageShader {
     id: u32,
@@ -58,24 +60,6 @@ impl ImageShader {
                 self.model_mat.value[0][0] = self.model_mat.value[1][1] / aspect_ratio;
             }
         }
-    }
-
-    /// 画像を拡大縮小する
-    pub fn on_mouse_wheel_event(
-        &mut self,
-        _timestamp: &u32,
-        _window_id: &u32,
-        _which: &u32,
-        _x: &i32,
-        y: &i32,
-        direction: &MouseWheelDirection,
-    ) {
-        let mut scale = 1.0f32 + *y as f32 / 10.0f32;
-        if *direction == MouseWheelDirection::Flipped {
-            scale = 1.0f32 / scale;
-        }
-        self.model_mat.value[0][0] *= scale;
-        self.model_mat.value[1][1] *= scale;
     }
 
     ///

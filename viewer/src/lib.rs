@@ -21,6 +21,9 @@ macro_rules! load_shaders {
     }};
 }
 
+type Vector3 = cgmath::Vector3<f32>;
+type Matrix4 = cgmath::Matrix4<f32>;
+
 pub mod app;
 mod model;
 mod presenter;
