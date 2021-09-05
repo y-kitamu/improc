@@ -1,5 +1,3 @@
-use std::time::{Duration, Instant};
-
 #[macro_export]
 macro_rules! timer {
     ($str:expr, $target:expr) => {{

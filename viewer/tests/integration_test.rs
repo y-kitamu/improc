@@ -33,11 +33,4 @@ fn test_app() {
         )
         .add_point_relation(key, w as f32, h as f32, "base_1", h as f32, w as f32);
     app.image_manager = app.image_manager.build();
-    assert!(app.image_manager.get_points_vertex(key).is_some());
-    assert!(app.image_manager.get_points_vertex("base_0").is_none());
-    assert!(app.image_manager.get_points_vertex("base_1").is_some());
-    let pl = app.image_manager.get_point_relation("base_1", key);
-    assert!(pl.is_some());
-    let pl = app.image_manager.get_point_relation(key, "base_0");
-    assert!(pl.is_some());
 }

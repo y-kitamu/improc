@@ -1,6 +1,5 @@
 use cgmath::One;
 use gl;
-use sdl2::mouse::{MouseButton, MouseState};
 
 use std::ffi::CString;
 use std::str;
@@ -63,17 +62,7 @@ impl ImageShader {
     }
 
     ///
-    pub fn on_mouse_motion_event(
-        &mut self,
-        _timestamp: &u32,
-        _window_id: &u32,
-        _which: &u32,
-        _mousestate: &MouseState,
-        _x: &i32,
-        _y: &i32,
-        xrel: f32,
-        yrel: f32,
-    ) {
+    pub fn on_mouse_motion_event(&mut self, xrel: f32, yrel: f32) {
         if self.is_dragging {
             self.model_mat.value[3][0] += xrel;
             self.model_mat.value[3][1] += yrel;
@@ -83,11 +72,6 @@ impl ImageShader {
     /// mouseが画像をクリックしたか判定する
     pub fn on_mouse_button_down(
         &mut self,
-        _timestamp: &u32,
-        _window_id: &u32,
-        _which: &u32,
-        _mouse_btn: &MouseButton,
-        _clicks: &u8,
         x: f32, // -1.0 to 1.0
         y: f32, // -1.0 to 1.0
     ) {
@@ -97,16 +81,7 @@ impl ImageShader {
             (nx.abs() <= self.model_mat.value[0][0]) && (ny.abs() <= self.model_mat.value[1][1]);
     }
 
-    pub fn on_mouse_button_up(
-        &mut self,
-        _timestamp: &u32,
-        _window_id: &u32,
-        _which: &u32,
-        _mouse_btn: &MouseButton,
-        _clicks: &u8,
-        _x: &i32, // -1.0 to 1.0
-        _y: &i32, // -1.0 to 1.0
-    ) {
+    pub fn on_mouse_button_up(&mut self) {
         self.is_dragging = false;
     }
 

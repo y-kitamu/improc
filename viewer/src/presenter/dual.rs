@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 
 use imgui::im_str;
-use sdl2::{event::Event, mouse::MouseWheelDirection, sys::SDL_GetMouseState};
+use sdl2::{event::Event, mouse::MouseWheelDirection};
 
 use crate::{
     model::image_manager::ImageManager,
     shader::{image_shader::ImageShader, line_shader::LineShader, point_shader::PointShader},
     utility::{get_mouse_pos, scale_matrix},
-    vertex::Vertex,
 };
 
 use super::PresenterMode;
@@ -60,9 +59,7 @@ impl DualImagePresenter {
         width: u32,
         height: u32,
         image_manager: &ImageManager,
-        fbo_vertex: &Vertex,
     ) {
-        let image_texture_id = image_manager.get_texture_id(image_key);
         let (image_width, image_height) = image_manager.get_texture_image_size(image_key);
 
         let shader = if left == 0 {
@@ -76,7 +73,6 @@ impl DualImagePresenter {
         };
         shader.adjust_aspect_ratio(image_width, image_height, width, height);
 
-        let pts_vertex = image_manager.get_points_vertex(image_key);
         let pts_shader = self
             .points_shader_map
             .get(&self.current_points_shader_key)
@@ -84,16 +80,13 @@ impl DualImagePresenter {
 
         unsafe {
             gl::Viewport(left as i32, top as i32, width as i32, height as i32);
-
             shader.set_uniform_variables();
-            gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
-            fbo_vertex.draw();
-            gl::BindTexture(gl::TEXTURE_2D, 0);
+            image_manager.draw_image(image_key);
+            gl::UseProgram(0);
 
-            if let Some(pts_vtx) = pts_vertex {
-                pts_shader.set_uniform_variables(&shader);
-                pts_vtx.draw_points();
-            }
+            pts_shader.set_uniform_variables(&shader);
+            image_manager.draw_points(image_key);
+            gl::UseProgram(0);
         }
     }
 
@@ -120,14 +113,7 @@ impl PresenterMode for DualImagePresenter {
     fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool {
         // let current_shader = self.get_current_shader();
         let processed = match event {
-            Event::MouseWheel {
-                timestamp,
-                window_id,
-                which,
-                x,
-                y,
-                direction,
-            } => {
+            Event::MouseWheel { y, direction, .. } => {
                 let (mx, my) = get_mouse_pos();
                 let half = fbo_width as f32 / 2.0;
                 let cy = (fbo_height as f32 - my as f32) / fbo_height as f32 * 2.0 - 1.0;
@@ -145,15 +131,7 @@ impl PresenterMode for DualImagePresenter {
                     scale_matrix(&current_shader.model_mat.value, cx, cy, scale);
                 true
             }
-            Event::MouseButtonDown {
-                timestamp,
-                window_id,
-                which,
-                mouse_btn,
-                clicks,
-                x,
-                y,
-            } => {
+            Event::MouseButtonDown { x, y, .. } => {
                 // 左上(0, 0), 右下(width, height)の座標系を
                 // 中心(0, 0), 左上(-1.0, 1.0), 右下(1.0, -1.0)の座標系に変換する
                 let fx = if (*x as u32) < fbo_width / 2 {
@@ -163,39 +141,19 @@ impl PresenterMode for DualImagePresenter {
                 };
                 let fy = 1.0f32 - *y as f32 / fbo_height as f32 * 2.0f32;
                 let current_shader = self.get_current_shader(fbo_width);
-                current_shader
-                    .on_mouse_button_down(timestamp, window_id, which, mouse_btn, clicks, fx, fy);
+                current_shader.on_mouse_button_down(fx, fy);
                 true
             }
-            Event::MouseButtonUp {
-                timestamp,
-                window_id,
-                which,
-                mouse_btn,
-                clicks,
-                x,
-                y,
-            } => {
+            Event::MouseButtonUp { .. } => {
                 let current_shader = self.get_current_shader(fbo_width);
-                current_shader
-                    .on_mouse_button_up(timestamp, window_id, which, mouse_btn, clicks, x, y);
+                current_shader.on_mouse_button_up();
                 true
             }
-            Event::MouseMotion {
-                timestamp,
-                window_id,
-                which,
-                mousestate,
-                x,
-                y,
-                xrel,
-                yrel,
-            } => {
+            Event::MouseMotion { xrel, yrel, .. } => {
                 let current_shader = self.get_current_shader(fbo_width);
                 let dx = *xrel as f32 / fbo_width as f32 * 4.0f32;
                 let dy = -*yrel as f32 / fbo_height as f32 * 2.0f32;
-                current_shader
-                    .on_mouse_motion_event(timestamp, window_id, which, mousestate, x, y, dx, dy);
+                current_shader.on_mouse_motion_event(dx, dy);
                 true
             }
             _ => false,
@@ -203,43 +161,24 @@ impl PresenterMode for DualImagePresenter {
         processed
     }
 
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager, fbo_vertex: &Vertex) {
+    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
         if self.current_image_keys.0.len() == 0 || self.current_image_keys.1.len() == 0 {
             return;
         }
 
-        let cur_img_key0 = self.current_image_keys.0.clone();
-        self.draw_half(
-            &cur_img_key0,
-            0,
-            0,
-            width / 2,
-            height,
-            image_manager,
-            fbo_vertex,
-        );
-        let cur_img_key1 = self.current_image_keys.1.clone();
-        self.draw_half(
-            &cur_img_key1,
-            width / 2,
-            0,
-            width / 2,
-            height,
-            image_manager,
-            fbo_vertex,
-        );
+        let lhs_key = self.current_image_keys.0.clone();
+        self.draw_half(&lhs_key, 0, 0, width / 2, height, image_manager);
+        let rhs_key = self.current_image_keys.1.clone();
+        self.draw_half(&rhs_key, width / 2, 0, width / 2, height, image_manager);
 
         // draw line
         let lhs_img_shader = self.shader_map_left.get(&self.current_shader_key).unwrap();
         let rhs_img_shader = self.shader_map_right.get(&self.current_shader_key).unwrap();
-        let line_vertex = image_manager.get_point_relation(&cur_img_key0, &cur_img_key1);
         unsafe {
             gl::Viewport(0, 0, width as i32, height as i32);
             self.point_relation_shader
                 .set_uniform_variables(lhs_img_shader, rhs_img_shader);
-            if let Some(lvtx) = line_vertex {
-                lvtx.draw_lines();
-            }
+            image_manager.draw_point_relations(&lhs_key, &rhs_key);
             gl::UseProgram(0);
         }
     }

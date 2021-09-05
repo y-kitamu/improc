@@ -26,8 +26,4 @@ impl PointShader {
             set_float(self.id, &self.point_size);
         }
     }
-
-    pub fn get_shader_id(&self) -> u32 {
-        return self.id;
-    }
 }

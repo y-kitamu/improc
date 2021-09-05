@@ -7,7 +7,6 @@ use crate::{
     model::image_manager::ImageManager,
     shader::{image_shader::ImageShader, point_shader::PointShader},
     utility::{get_mouse_pos, scale_matrix},
-    vertex::Vertex,
 };
 
 use super::PresenterMode;
@@ -62,14 +61,7 @@ impl PresenterMode for DefaultPresenterMode {
         let current_shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
         // let current_shader = self.get_current_shader();
         let processed = match event {
-            Event::MouseWheel {
-                timestamp,
-                window_id,
-                which,
-                x,
-                y,
-                direction,
-            } => {
+            Event::MouseWheel { y, direction, .. } => {
                 let (mx, my) = get_mouse_pos();
                 let cx = mx as f32 / fbo_width as f32 * 2.0 - 1.0;
                 let cy = (fbo_height as f32 - my as f32) / fbo_height as f32 * 2.0 - 1.0;
@@ -81,50 +73,22 @@ impl PresenterMode for DefaultPresenterMode {
                     scale_matrix(&current_shader.model_mat.value, cx, cy, scale);
                 true
             }
-            Event::MouseButtonDown {
-                timestamp,
-                window_id,
-                which,
-                mouse_btn,
-                clicks,
-                x,
-                y,
-            } => {
+            Event::MouseButtonDown { x, y, .. } => {
                 // 左上(0, 0), 右下(width, height)の座標系を
                 // 中心(0, 0), 左上(-1.0, 1.0), 右下(1.0, -1.0)の座標系に変換する
                 let fx = *x as f32 / fbo_width as f32 * 2.0f32 - 1.0f32;
                 let fy = 1.0f32 - *y as f32 / fbo_height as f32 * 2.0f32;
-                current_shader
-                    .on_mouse_button_down(timestamp, window_id, which, mouse_btn, clicks, fx, fy);
+                current_shader.on_mouse_button_down(fx, fy);
                 true
             }
-            Event::MouseButtonUp {
-                timestamp,
-                window_id,
-                which,
-                mouse_btn,
-                clicks,
-                x,
-                y,
-            } => {
-                current_shader
-                    .on_mouse_button_up(timestamp, window_id, which, mouse_btn, clicks, x, y);
+            Event::MouseButtonUp { .. } => {
+                current_shader.on_mouse_button_up();
                 true
             }
-            Event::MouseMotion {
-                timestamp,
-                window_id,
-                which,
-                mousestate,
-                x,
-                y,
-                xrel,
-                yrel,
-            } => {
+            Event::MouseMotion { xrel, yrel, .. } => {
                 let dx = *xrel as f32 / fbo_width as f32 * 2.0f32;
                 let dy = -*yrel as f32 / fbo_height as f32 * 2.0f32;
-                current_shader
-                    .on_mouse_motion_event(timestamp, window_id, which, mousestate, x, y, dx, dy);
+                current_shader.on_mouse_motion_event(dx, dy);
                 true
             }
             _ => false,
@@ -132,38 +96,28 @@ impl PresenterMode for DefaultPresenterMode {
         processed
     }
 
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager, fbo_vertex: &Vertex) {
+    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
         if self.current_image_key.len() == 0 {
             return;
         }
-        let image_texture_id = image_manager.get_texture_id(&self.current_image_key);
         let (image_width, image_height) =
             image_manager.get_texture_image_size(&self.current_image_key);
 
         let shader = self.shader_map.get_mut(&self.current_shader_key).unwrap();
         shader.adjust_aspect_ratio(image_width, image_height, width, height);
-        let shader_id = shader.get_shader_id();
 
-        let pts_vertex = image_manager.get_points_vertex(&self.current_image_key);
         let pts_shader = self
             .points_shader_map
             .get(&self.current_points_shader_key)
             .unwrap();
-        let pts_shader_id = pts_shader.get_shader_id();
-
         unsafe {
-            gl::UseProgram(shader_id);
             shader.set_uniform_variables();
+            image_manager.draw_image(&self.current_image_key);
+            gl::UseProgram(0);
 
-            gl::BindTexture(gl::TEXTURE_2D, image_texture_id);
-            fbo_vertex.draw();
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-
-            if let Some(pts_vtx) = pts_vertex {
-                gl::UseProgram(pts_shader_id);
-                pts_shader.set_uniform_variables(&shader);
-                pts_vtx.draw_points();
-            }
+            pts_shader.set_uniform_variables(&shader);
+            image_manager.draw_points(&self.current_image_key);
+            gl::UseProgram(0);
         }
     }
 

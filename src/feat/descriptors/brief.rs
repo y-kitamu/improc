@@ -3,10 +3,7 @@ use image::{GrayImage, Luma, Pixel};
 use nalgebra::Point2;
 use rand_distr::{Distribution, Normal};
 
-use crate::{
-    feat::keypoints::KeyPoint,
-    imgproc::{gaussian, median_filter},
-};
+use crate::{feat::keypoints::KeyPoint, imgproc::median_filter};
 
 use super::{BriefBitVec, Descriptor, Extractor};
 

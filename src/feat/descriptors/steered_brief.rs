@@ -1,4 +1,3 @@
-use bitvec::prelude::BitVec;
 use image::{GrayImage, Luma, Pixel};
 use nalgebra::Point2;
 

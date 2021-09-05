@@ -1,5 +1,3 @@
-use std::ops::BitXor;
-
 use bitvec::prelude::*;
 
 pub trait Distance {

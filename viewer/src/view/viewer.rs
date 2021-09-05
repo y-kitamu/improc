@@ -8,9 +8,12 @@ use imgui::im_str;
 use log::info;
 use sdl2::{event::Event, keyboard::Keycode, Sdl, VideoSubsystem};
 
-use crate::vertex::Vertex;
+use crate::{
+    define_gl_primitive, draw,
+    model::{create_simple_vertex, GLPrimitive},
+    shader::image_shader::ImageShader,
+};
 use crate::{model::image_manager::ImageManager, presenter::Presenter};
-use crate::{shader::image_shader::ImageShader, vertex};
 
 #[derive(Debug)]
 struct ViewerError(String);
@@ -29,9 +32,13 @@ pub struct Viewer {
     video_subsystem: VideoSubsystem,
     window: sdl2::video::Window,
     _gl_context: sdl2::video::GLContext,
-    screen_vertex: Vertex,
     screen_shader: ImageShader,
+    vao: Option<u32>,
+    vbo: Option<u32>,
+    vertex_num: i32,
 }
+
+define_gl_primitive!(Viewer);
 
 impl Viewer {
     pub fn new(
@@ -40,7 +47,7 @@ impl Viewer {
         window: sdl2::video::Window,
         gl_context: sdl2::video::GLContext,
     ) -> Viewer {
-        let screen_vertex = vertex::create_simple_vertex();
+        let (vao, vbo, vertex_num) = create_simple_vertex();
         let screen_shader = ImageShader::new("screen");
 
         let viewer = Viewer {
@@ -48,11 +55,13 @@ impl Viewer {
             video_subsystem,
             window,
             _gl_context: gl_context,
-            screen_vertex,
             screen_shader,
+            vao: Some(vao),
+            vbo: Some(vbo),
+            vertex_num,
         };
 
-        info!("OK : init Viewer.");
+        info!("OK : Init Viewer.");
         viewer
     }
 
@@ -88,8 +97,7 @@ impl Viewer {
             presenter.draw(width, height, &image_manager);
 
             // draw fbo to screen
-            let texture_id = presenter.get_texture_id();
-            self.draw(texture_id);
+            self.draw(presenter.get_texture_id());
 
             // draw imgui widgets
             imgui_sdl2_context.prepare_frame(
@@ -129,7 +137,7 @@ impl Viewer {
             gl::UseProgram(shader_id);
 
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
-            self.screen_vertex.draw();
+            draw!(self, gl::TRIANGLES);
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);

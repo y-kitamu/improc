@@ -1,6 +1,6 @@
 use std::ops::{Add, Mul};
 
-use nalgebra::{matrix, vector, ComplexField, Matrix2, Matrix2x3, Point2, Scalar, Vector2};
+use nalgebra::{matrix, ComplexField, Matrix2, Matrix2x3, Point2, Scalar};
 
 /// calculate inverse of given affine matrix.
 pub fn inv_affine_mat<T: Scalar + ComplexField>(affine_mat: &Matrix2x3<T>) -> Matrix2x3<T> {

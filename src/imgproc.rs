@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
-use image::{ColorType, GrayImage, ImageBuffer, Pixel, RgbImage};
-use nalgebra::{vector, Matrix2x3, Point2};
+use image::{ColorType, ImageBuffer, Pixel};
+use nalgebra::{Matrix2x3, Point2};
 use num_traits::ToPrimitive;
 
 use crate::feat::keypoints::KeyPoint;

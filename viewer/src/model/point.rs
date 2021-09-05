@@ -1,9 +1,76 @@
-use std::collections::HashMap;
+use std::{ffi::c_void, mem};
 
 use cgmath::Point3;
+use gl::types::{GLfloat, GLsizei, GLsizeiptr};
 
-#[derive(Clone)]
-pub struct Color {
+use crate::{define_drawable, define_gl_primitive, model::register_primitive};
+
+use super::{Drawable, GLPrimitive};
+
+/// 画像上の点群の情報を保持するstruct.
+/// `points`に保持される点は正規化座標系上の点である。
+/// (画像の左下を(-1.0, -1.0)、右上を(1.0, 1.0)で中心を(0, 0)とする座標系)
+pub struct Points {
+    points: Vec<Point>,
+    vao: Option<u32>,
+    vbo: Option<u32>,
+    vertex_num: i32,
+}
+
+define_gl_primitive!(Points);
+define_drawable!(Points, gl::POINTS);
+
+impl Points {
+    pub fn new() -> Self {
+        Points {
+            points: Vec::new(),
+            vao: None,
+            vbo: None,
+            vertex_num: 0,
+        }
+    }
+
+    pub fn add_point(&mut self, x: f32, y: f32, z: f32, r: f32, g: f32, b: f32) {
+        self.points.push(Point::new(x, y, z, r, g, b));
+    }
+
+    /// 指定した座標に点が登録されているか判定する
+    pub fn is_exist_point(&self, x: f32, y: f32) -> bool {
+        for pt in &self.points {
+            if pt.is_equal_to(x, y) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn build(&mut self) {
+        if self.points.len() > 0 && self.vao.is_none() {
+            let n_vertex_per_point = self.points[0].to_vec().len();
+            let attribute_types = vec![gl::FLOAT, gl::FLOAT];
+            let attribute_sizes = vec![3, 3];
+            let buf_array = self
+                .points
+                .iter()
+                .map(|p| p.to_vec())
+                .flatten()
+                .collect::<Vec<f32>>();
+            let (vao, vbo) = register_primitive(
+                (buf_array.len() as usize * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                buf_array.as_ptr() as *const c_void,
+                gl::STATIC_DRAW,
+                attribute_types,
+                attribute_sizes,
+                (n_vertex_per_point * mem::size_of::<GLfloat>()) as GLsizei,
+            );
+            self.vao = Some(vao);
+            self.vbo = Some(vbo);
+            self.vertex_num = (buf_array.len() / n_vertex_per_point) as i32;
+        }
+    }
+}
+
+struct Color {
     r: f32,
     g: f32,
     b: f32,
@@ -11,10 +78,9 @@ pub struct Color {
 
 /// 点情報を保持する
 /// locには画像の中心を原点(0, 0)、右上を(1, 1)とした座標系での値を保持する。
-pub struct Point {
+struct Point {
     loc: Point3<f32>,
     color: Color,
-    relations: HashMap<String, Point3<f32>>,
 }
 
 impl Point {
@@ -26,55 +92,22 @@ impl Point {
         Point {
             loc: Point3::<f32> { x, y, z },
             color: Color { r, g, b },
-            relations: HashMap::new(),
         }
     }
 
-    pub fn add_relation(&mut self, key: &str, x: f32, y: f32) {
-        let pt = Point3::new(x, y, 1.0);
-        self.relations.insert(key.to_string(), pt);
-    }
-
     pub fn is_equal_to(&self, x: f32, y: f32) -> bool {
-        (self.x() - x).abs() < 1e-5 && (self.y() - y).abs() < 1e-5
+        (self.loc.x - x).abs() < 1e-5 && (self.loc.y - y).abs() < 1e-5
     }
 
-    pub fn get_relation(&self, target_image_id: &str) -> Option<&Point3<f32>> {
-        self.relations.get(target_image_id)
-    }
-
-    pub fn x(&self) -> f32 {
-        self.loc.x
-    }
-
-    pub fn y(&self) -> f32 {
-        self.loc.y
-    }
-
-    pub fn z(&self) -> f32 {
-        self.loc.z
-    }
-
-    pub fn r(&self) -> f32 {
-        self.color.r
-    }
-
-    pub fn g(&self) -> f32 {
-        self.color.g
-    }
-
-    pub fn b(&self) -> f32 {
-        self.color.b
-    }
-}
-
-impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool {
-        (other.x() - self.x()) < 1e-5 && (other.y() - self.y()) < 1e-5
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
+    pub fn to_vec(&self) -> Vec<f32> {
+        vec![
+            self.loc.x,
+            self.loc.y,
+            self.loc.z,
+            self.color.r,
+            self.color.g,
+            self.color.b,
+        ]
     }
 }
 
@@ -84,23 +117,15 @@ mod tests {
 
     #[test]
     pub fn test_point() {
-        let mut pt = Point::new(1.0, 0.5, -1.0, 0.0, 1.0, 0.8);
-        assert!((pt.x() - 1.0).abs() < 1e-5);
-        assert!((pt.y() - 0.5).abs() < 1e-5);
-        assert!((pt.z() + 1.0).abs() < 1e-5);
-        assert!((pt.r() - 0.0).abs() < 1e-5);
-        assert!((pt.g() - 1.0).abs() < 1e-5);
-        assert!((pt.b() - 0.8).abs() < 1e-5);
+        let pt = Point::new(1.0, 0.5, -1.0, 0.0, 1.0, 0.8);
+        assert!((pt.loc.x - 1.0).abs() < 1e-5);
+        assert!((pt.loc.y - 0.5).abs() < 1e-5);
+        assert!((pt.loc.z + 1.0).abs() < 1e-5);
+        assert!((pt.color.r - 0.0).abs() < 1e-5);
+        assert!((pt.color.g - 1.0).abs() < 1e-5);
+        assert!((pt.color.b - 0.8).abs() < 1e-5);
 
         assert!(pt.is_equal_to(1.0, 0.5));
         assert!(!pt.is_equal_to(1.0, 0.55));
-
-        let key = "sample";
-        pt.add_relation(key, 0.5, -0.7);
-        let rel = pt.get_relation(key);
-        assert!(rel.is_some());
-        let rel = rel.unwrap();
-        assert!((rel.x - 0.5).abs() < 1e-5);
-        assert!((rel.y + 0.7).abs() < 1e-5);
     }
 }

@@ -1,7 +1,3 @@
-use std::ops::Deref;
-
-use image::{DynamicImage, GenericImage, ImageBuffer, Pixel};
-
 pub mod feat;
 pub mod imgproc;
 pub mod linalg;

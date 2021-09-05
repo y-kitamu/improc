@@ -1,32 +1,62 @@
+use std::collections::HashMap;
 use std::path::Path;
-use std::{collections::HashMap, os::raw::c_void};
 
 use anyhow::Result;
-use image::{DynamicImage, EncodableLayout, GenericImageView};
+use image::DynamicImage;
 use log::warn;
 
-use crate::{utility::convert_to_rgb, vertex::Vertex};
+use crate::{define_gl_primitive, draw};
 
-use super::image::Image;
+use super::{create_simple_vertex, image::Image, GLPrimitive};
 
 /// Textureに登録した画像を管理する。
 /// 画像は左下が原点(pointerの開始地点)になるように、適当にflipする
+/// 外部から`model` moduleにaccessするためのinterface. (`ImageManager`以外はprivateにする)
 pub struct ImageManager {
     images: HashMap<String, Image>,
-    is_build: bool,
+    vao: Option<u32>,
+    vbo: Option<u32>,
+    vertex_num: i32,
 }
+
+define_gl_primitive!(ImageManager);
 
 impl ImageManager {
     pub fn new() -> ImageManager {
-        let image_manager = ImageManager {
+        let (vao, vbo, vertex_num) = create_simple_vertex();
+        ImageManager {
             images: HashMap::new(),
-            is_build: false,
-        };
-        image_manager
+            vao: Some(vao),
+            vbo: Some(vbo),
+            vertex_num,
+        }
     }
 
-    pub fn build(self) -> Self {
-        self.build_points_vertex().build_point_relation()
+    pub fn build(mut self) -> Self {
+        self.images.iter_mut().for_each(|(_key, val)| {
+            val.build();
+        });
+        self
+    }
+
+    pub fn draw_image(&self, img_key: &str) {
+        let image = self.images.get(img_key).unwrap();
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, image.id());
+            draw!(self, gl::TRIANGLES);
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+        }
+    }
+
+    pub fn draw_points(&self, img_key: &str) {
+        self.images.get(img_key).unwrap().draw_objects();
+    }
+
+    pub fn draw_point_relations(&self, lhs_key: &str, rhs_key: &str) {
+        self.images
+            .get(lhs_key)
+            .unwrap()
+            .draw_point_relations(rhs_key);
     }
 
     pub fn load_image(&mut self, path: &Path, id: &str, vflip: bool) -> Result<()> {
@@ -40,67 +70,15 @@ impl ImageManager {
 
     /// 画像をtextureに追加する。
     /// 画像のポインタの先頭が画像の左下であると想定している。
-    pub fn add_image(&mut self, image: &DynamicImage, id: &str) {
-        let image = image.flipv();
-        let id = id.to_string();
-        if self.images.contains_key(&id) {
+    pub fn add_image(&mut self, image: &DynamicImage, key: &str) {
+        if self.images.contains_key(key) {
             warn!(
                 "Image key {} already exist in `images`. Skip add image.",
-                id
+                key
             );
             return;
         }
-
-        let (format, image) = match image {
-            DynamicImage::ImageLuma8(img) => {
-                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
-            }
-            DynamicImage::ImageLumaA8(img) => {
-                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
-            }
-            DynamicImage::ImageLuma16(img) => {
-                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
-            }
-            DynamicImage::ImageLumaA16(img) => {
-                (gl::RGB, DynamicImage::ImageRgb8(convert_to_rgb(&img)))
-            }
-            DynamicImage::ImageRgb8(_)
-            | DynamicImage::ImageBgr8(_)
-            | DynamicImage::ImageRgb16(_) => (gl::RGB, image.clone()),
-            DynamicImage::ImageRgba8(_)
-            | DynamicImage::ImageBgra8(_)
-            | DynamicImage::ImageRgba16(_) => (gl::RGBA, image.clone()),
-        };
-        let data = image.as_bytes();
-
-        let mut texture = 0;
-        unsafe {
-            gl::GenTextures(1, &mut texture);
-            gl::BindTexture(gl::TEXTURE_2D, texture);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                format as i32,
-                image.width() as i32,
-                image.height() as i32,
-                0,
-                format,
-                gl::UNSIGNED_BYTE,
-                &data[0] as *const u8 as *const c_void,
-            );
-            gl::GenerateMipmap(gl::TEXTURE_2D);
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-        }
-        println!("Finish register image : id = {}, index = {}", id, texture);
-        self.images.insert(
-            id.clone(),
-            Image::new(&id, texture, image.width(), image.height()),
-        );
+        self.images.insert(key.to_string(), Image::new(key, image));
     }
 
     /// `ImageManager`に登録済みの画像のkeyの一覧を取得する
@@ -124,24 +102,6 @@ impl ImageManager {
         }
     }
 
-    /// `key`で指定した画像の頂点情報(`Vertex`)を取得する
-    pub fn get_points_vertex(&self, key: &str) -> &Option<Vertex> {
-        // TODO: refactor (is_buildは`get_points_vertex`のoption判定で十分?)
-        if !self.is_build {
-            warn!("`ImageManager` has not been built. `build_points_vertex` should be called.")
-        }
-        self.images.get(key).unwrap().get_points_vertex()
-    }
-
-    /// `lhs_key`, `rhs_key`で指定した画像間のpoint relationのVertexを取得する
-    /// `lhs_key`, `rhs_key`の順番を逆にすると正しく表示されなくなるので注意する。
-    pub fn get_point_relation(&self, lhs_key: &str, rhs_key: &str) -> Option<&Vertex> {
-        self.images
-            .get(lhs_key)
-            .unwrap()
-            .get_point_relation_vertex(rhs_key)
-    }
-
     /// add point (`x`, `y`, `z`) to image of `image_id`.
     /// Argument `x` and `y` are treated as point on the image coordinate system.
     /// A value range of `z` is from -1.0 to 1.0.
@@ -150,15 +110,6 @@ impl ImageManager {
         let image = self.images.remove(image_id).unwrap();
         let image = image.add_point(x, y, z, r, g, b);
         self.images.insert(image_id.to_string(), image);
-    }
-
-    /// `ImageManager`に登録されている画像の点群をOpenGLに登録する
-    fn build_points_vertex(mut self) -> Self {
-        self.images
-            .iter_mut()
-            .for_each(|(_, image)| image.build_points_vertex());
-        self.is_build = true;
-        self
     }
 
     pub fn add_point_relation(
@@ -187,28 +138,25 @@ impl ImageManager {
         );
         self.images.insert(rhs_key.to_string(), image);
     }
-
-    fn build_point_relation(mut self) -> Self {
-        let keys: Vec<String> = self.get_image_keys().map(|val| val.to_string()).collect();
-        for target_key in &keys {
-            for (img_key, img) in &mut self.images {
-                if img_key != target_key {
-                    img.build_point_relation(target_key);
-                }
-            }
-        }
-        self
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::{arrow::Arrows, point::Points};
+
     use super::*;
 
     #[test]
     fn test_image_manager() {
-        let manager = ImageManager::new();
+        let mut manager = ImageManager {
+            images: HashMap::new(),
+            vao: None,
+            vbo: None,
+            vertex_num: 0,
+        };
+
         assert!(manager.images.is_empty());
-        assert!(!manager.is_build);
+
+        assert_eq!(manager.get_image_keys().len(), 0);
     }
 }

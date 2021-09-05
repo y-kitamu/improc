@@ -6,12 +6,16 @@ use std::{collections::HashMap, ptr};
 use imgui::im_str;
 use sdl2::event::Event;
 
-use crate::{
-    model::image_manager::ImageManager,
-    vertex::{self, Vertex},
-};
+use crate::model::image_manager::ImageManager;
 
 use self::{default::DefaultPresenterMode, dual::DualImagePresenter};
+
+macro_rules! add_mode_to_presenter {
+    ($t:ty, $e:expr) => {
+        let mode = Box::new(<$t>::new());
+        $e.modes.insert(mode.get_mode_name().to_string(), mode);
+    };
+}
 
 pub trait PresenterMode {
     fn get_mode_name(&self) -> &str;
@@ -20,7 +24,7 @@ pub trait PresenterMode {
     fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool;
 
     /// draw images and points to frame buffer object for off screen rendering
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager, fbo_vertex: &Vertex);
+    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager);
 
     /// draw imgui object to screen (not frame buffer object)
     fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager);
@@ -34,12 +38,10 @@ pub struct Presenter {
     color_buffer_id: u32,
     fbo_width: u32,
     fbo_height: u32,
-    fbo_vertex: Vertex,
 }
 
 impl Presenter {
     pub fn new(width: u32, height: u32) -> Self {
-        let fbo_vertex = vertex::create_simple_vertex();
         let (frame_buffer_id, depth_buffer_id, color_buffer_id) =
             create_frame_buffer(width, height);
         let mut presenter = Presenter {
@@ -50,19 +52,9 @@ impl Presenter {
             color_buffer_id,
             fbo_width: width,
             fbo_height: height,
-            fbo_vertex,
         };
-
-        let default_mode = Box::new(DefaultPresenterMode::new());
-        presenter
-            .modes
-            .insert(default_mode.get_mode_name().to_string(), default_mode);
-
-        let dual_mode = Box::new(DualImagePresenter::new());
-        presenter
-            .modes
-            .insert(dual_mode.get_mode_name().to_string(), dual_mode);
-
+        add_mode_to_presenter!(DefaultPresenterMode, presenter);
+        add_mode_to_presenter!(DualImagePresenter, presenter);
         presenter
     }
 
@@ -102,7 +94,7 @@ impl Presenter {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
-        current_mode.draw(width, height, image_manager, &self.fbo_vertex);
+        current_mode.draw(width, height, image_manager);
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
             gl::Viewport(0, 0, width as i32, height as i32);
