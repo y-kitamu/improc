@@ -156,3 +156,18 @@ unsafe fn set_float(shader_id: u32, u_var: &UniformVariable<f32>) {
         u_var.value,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_uniform_variable() {
+        let uval = UniformVariable::new("test", vec![1u8; 3]);
+        assert_eq!(uval.value[0], 1);
+        assert_eq!(uval.value[1], 1);
+        assert_eq!(uval.value[2], 1);
+        assert_eq!(uval.value.len(), 3);
+        assert_eq!(uval.name, CString::new("test").unwrap());
+    }
+}
