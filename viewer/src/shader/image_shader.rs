@@ -4,7 +4,7 @@ use gl;
 use std::ffi::CString;
 use std::str;
 
-use crate::Matrix4;
+use crate::{utility::scale_matrix, Matrix4};
 
 use super::{compile_shader, set_mat4, UniformVariable};
 
@@ -16,7 +16,6 @@ pub struct ImageShader {
     is_dragging: bool, // 画像をdrag中かどうか
 }
 
-#[allow(dead_code)]
 impl ImageShader {
     pub fn new(shader_path_stem: &str) -> Self {
         let id = compile_shader(shader_path_stem);
@@ -41,6 +40,10 @@ impl ImageShader {
         }
     }
 
+    pub fn change_shader_program(&mut self, shader_path_stem: &str) {
+        self.id = compile_shader(shader_path_stem);
+    }
+
     /// 元画像のaspect ratioが保存されるようにmodel matrixを調整する
     pub fn adjust_aspect_ratio(
         &mut self,
@@ -59,6 +62,10 @@ impl ImageShader {
                 self.model_mat.value[0][0] = self.model_mat.value[1][1] / aspect_ratio;
             }
         }
+    }
+
+    pub fn on_mouse_wheel(&mut self, cx: f32, cy: f32, scale: f32) {
+        self.model_mat.value = scale_matrix(&self.model_mat.value, cx, cy, scale);
     }
 
     ///

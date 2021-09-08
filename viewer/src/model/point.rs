@@ -3,9 +3,15 @@ use std::{ffi::c_void, mem};
 use cgmath::Point3;
 use gl::types::{GLfloat, GLsizei, GLsizeiptr};
 
-use crate::{define_drawable, define_gl_primitive, model::register_primitive};
+use crate::{
+    define_gl_primitive, draw,
+    model::register_primitive,
+    shader::{image_shader::ImageShader, point_shader::PointShader},
+};
 
-use super::{Drawable, GLPrimitive};
+use super::GLPrimitive;
+
+const DEFAULT_POINTS_SHADER_KEY: &str = "points";
 
 /// 画像上の点群の情報を保持するstruct.
 /// `points`に保持される点は正規化座標系上の点である。
@@ -15,10 +21,10 @@ pub struct Points {
     vao: Option<u32>,
     vbo: Option<u32>,
     vertex_num: i32,
+    shader: PointShader,
 }
 
 define_gl_primitive!(Points);
-define_drawable!(Points, gl::POINTS);
 
 impl Points {
     pub fn new() -> Self {
@@ -27,6 +33,7 @@ impl Points {
             vao: None,
             vbo: None,
             vertex_num: 0,
+            shader: PointShader::new(DEFAULT_POINTS_SHADER_KEY),
         }
     }
 
@@ -66,6 +73,14 @@ impl Points {
             self.vao = Some(vao);
             self.vbo = Some(vbo);
             self.vertex_num = (buf_array.len() / n_vertex_per_point) as i32;
+        }
+    }
+
+    pub fn draw(&self, image_shader: &ImageShader) {
+        self.shader.set_uniform_variables(image_shader);
+        draw!(self, gl::POINTS);
+        unsafe {
+            gl::UseProgram(0);
         }
     }
 }

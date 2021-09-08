@@ -94,13 +94,13 @@ impl App {
         self
     }
 
-    /// Add point to a image of key = `image_id`.
+    /// Add point to a image of key = `image_key`.
     /// Argument `x` and `y` are treated as point on the image coordinate system.
     /// A value range of `z` is from -1.0 to 1.0.
     /// Argument `r`, `g` and `b` are pixel values range from 0.0 to 1.0.
     pub fn add_point(
         mut self,
-        image_id: &str,
+        image_key: &str,
         x: f32,
         y: f32,
         z: f32,
@@ -108,20 +108,39 @@ impl App {
         g: f32,
         b: f32,
     ) -> Self {
-        self.image_manager.add_point(image_id, x, y, z, r, g, b);
+        self.image_manager.add_point(image_key, x, y, z, r, g, b);
         self
     }
 
     pub fn add_points(
         self,
-        image_id: &str,
+        image_key: &str,
         points: &Vec<Point3<f32>>,
         r: f32,
         g: f32,
         b: f32,
     ) -> Self {
         points.iter().fold(self, |app, pt| {
-            app.add_point(image_id, pt.x, pt.y, pt.z, r, g, b)
+            app.add_point(image_key, pt.x, pt.y, pt.z, r, g, b)
+        })
+    }
+
+    pub fn add_arrow(
+        mut self,
+        image_key: &str,
+        x: f32,
+        y: f32,
+        direction: f32,
+        length: f32,
+    ) -> Self {
+        self.image_manager
+            .add_arrow(image_key, x, y, direction, length);
+        self
+    }
+
+    pub fn add_arrows(self, image_key: &str, arrows: Vec<(f32, f32, f32, f32)>) -> Self {
+        arrows.iter().fold(self, |app, (x, y, dir, len)| {
+            app.add_arrow(image_key, *x, *y, *dir, *len)
         })
     }
 
@@ -142,10 +161,10 @@ impl App {
     pub fn add_point_relations(
         mut self,
         points: &Vec<Vec<Point3<f32>>>,
-        image_ids: &Vec<Vec<String>>,
+        image_keys: &Vec<Vec<String>>,
     ) -> Self {
-        assert_eq!(points.len(), image_ids.len());
-        for (pts, ids) in points.iter().zip(image_ids) {
+        assert_eq!(points.len(), image_keys.len());
+        for (pts, ids) in points.iter().zip(image_keys) {
             assert_eq!(pts.len(), ids.len());
             for i in 0..(pts.len()) {
                 for j in (i + 1)..(pts.len()) {

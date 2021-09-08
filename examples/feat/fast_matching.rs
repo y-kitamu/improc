@@ -180,6 +180,7 @@ fn main() {
                 .collect()
         })
         .collect();
+
     let mps: Vec<Vec<Point3<f32>>> = ms.iter().map(|pair| vec![pair[0].1, pair[1].1]).collect();
     let ids: Vec<Vec<String>> = ms
         .iter()

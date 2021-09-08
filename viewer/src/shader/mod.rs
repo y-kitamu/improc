@@ -11,6 +11,7 @@ use crate::{Matrix4, Vector3};
 pub mod image_shader;
 pub mod line_shader;
 pub mod point_shader;
+pub mod relation_line_shader;
 
 pub struct UniformVariable<T> {
     pub name: CString, // uniform variable name in glsl program.

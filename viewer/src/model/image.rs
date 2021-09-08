@@ -3,9 +3,11 @@ use std::{collections::HashMap, ffi::c_void};
 use image::{DynamicImage, GenericImageView};
 use log::warn;
 
-use crate::utility::convert_to_rgb;
+use crate::{draw, shader::image_shader::ImageShader, utility::convert_to_rgb};
 
 use super::{arrow::Arrows, point::Points, point_relation::PointRelations, Drawable};
+
+const DEFAULT_IMAGE_SHADER: &str = "default";
 
 /// 画像の描画に必要な情報、画像上の点の情報を保持するstruct.
 /// `points`に保持される点は正規化座標系上の点である。
@@ -16,6 +18,7 @@ use super::{arrow::Arrows, point::Points, point_relation::PointRelations, Drawab
 pub struct Image {
     key: String,
     texture_id: u32, // openglのtexture id
+    image_shader: ImageShader,
     width: u32,
     height: u32,
     points: Points,
@@ -75,9 +78,11 @@ impl Image {
         }
 
         println!("Finish register image : key = {}, index = {}", key, texture);
+        let image_shader = ImageShader::new(DEFAULT_IMAGE_SHADER);
         Image {
             key: key.to_string(),
             texture_id: texture,
+            image_shader,
             width: image.width(),
             height: image.height(),
             points: Points::new(),
@@ -95,15 +100,39 @@ impl Image {
         });
     }
 
-    pub fn draw_objects(&self) {
-        self.points.draw();
-        self.arrows.draw();
+    pub fn draw_objects(
+        &mut self,
+        vao: u32,
+        vertex_num: i32,
+        screen_width: u32,
+        screen_height: u32,
+    ) {
+        self.image_shader
+            .adjust_aspect_ratio(self.width, self.height, screen_width, screen_height);
+        self.image_shader.set_uniform_variables();
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, self.texture_id);
+            gl::BindVertexArray(vao);
+            gl::DrawArrays(gl::TRIANGLES, 0, vertex_num);
+            gl::BindVertexArray(0);
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+            gl::UseProgram(0);
+        }
+        self.points.draw(&self.image_shader);
+        self.arrows.draw(&self.image_shader);
     }
 
     pub fn draw_point_relations(&self, other_key: &str) {
         if let Some(rel) = self.point_relations.get(other_key) {
             rel.draw();
         }
+        unsafe {
+            gl::UseProgram(0);
+        }
+    }
+
+    pub fn shader(&self) -> &ImageShader {
+        &self.image_shader
     }
 
     pub fn key(&self) -> &str {
@@ -128,6 +157,22 @@ impl Image {
         (x, y)
     }
 
+    pub fn on_mouse_wheel(&mut self, x: f32, y: f32, scale: f32) {
+        self.image_shader.on_mouse_wheel(x, y, scale);
+    }
+
+    pub fn on_mouse_button_down(&mut self, fx: f32, fy: f32) {
+        self.image_shader.on_mouse_button_down(fx, fy);
+    }
+
+    pub fn on_mouse_button_up(&mut self) {
+        self.image_shader.on_mouse_button_up();
+    }
+
+    pub fn on_mouse_motion_event(&mut self, dx: f32, dy: f32) {
+        self.image_shader.on_mouse_motion_event(dx, dy);
+    }
+
     /// 画像に点を追加する
     /// Argument `x` and `y` are treated as point on the image coordinate system.
     /// A value range of `z` is from -1.0 to 1.0.
@@ -135,6 +180,16 @@ impl Image {
     pub fn add_point(mut self, x: f32, y: f32, z: f32, r: f32, g: f32, b: f32) -> Image {
         let (x, y) = self.convert_to_norm_coord(x, y);
         self.points.add_point(x, y, z, r, g, b);
+        self
+    }
+
+    /// 画像に矢印を追加する
+    /// Argument `x` and `y` are treated as point on the image coordinate system.
+    /// Argument `direction` is radian of the arrow direction.
+    pub fn add_arrow(mut self, x: f32, y: f32, direction: f32, length: f32) -> Image {
+        let (x, y) = self.convert_to_norm_coord(x, y);
+        let length = length / self.width as f32;
+        self.arrows.add_arrow(x, y, direction, length);
         self
     }
 

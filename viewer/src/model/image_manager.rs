@@ -5,9 +5,14 @@ use anyhow::Result;
 use image::DynamicImage;
 use log::warn;
 
-use crate::{define_gl_primitive, draw};
+use crate::{
+    define_gl_primitive,
+    shader::{image_shader::ImageShader, relation_line_shader::RelationLineShader},
+};
 
 use super::{create_simple_vertex, image::Image, GLPrimitive};
+
+const DEFAULT_POIRNT_RELATION_SHADER: &str = "relation_line";
 
 /// Textureに登録した画像を管理する。
 /// 画像は左下が原点(pointerの開始地点)になるように、適当にflipする
@@ -17,6 +22,7 @@ pub struct ImageManager {
     vao: Option<u32>,
     vbo: Option<u32>,
     vertex_num: i32,
+    point_relation_shader: RelationLineShader,
 }
 
 define_gl_primitive!(ImageManager);
@@ -29,6 +35,7 @@ impl ImageManager {
             vao: Some(vao),
             vbo: Some(vbo),
             vertex_num,
+            point_relation_shader: RelationLineShader::new(DEFAULT_POIRNT_RELATION_SHADER),
         }
     }
 
@@ -39,25 +46,24 @@ impl ImageManager {
         self
     }
 
-    pub fn draw_image(&self, img_key: &str) {
-        let image = self.images.get(img_key).unwrap();
-        unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, image.id());
-            draw!(self, gl::TRIANGLES);
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-        }
-    }
-
-    pub fn draw_points(&self, img_key: &str) {
-        self.images.get(img_key).unwrap().draw_objects();
+    pub fn draw(&mut self, img_key: &str, screen_width: u32, screen_height: u32) {
+        self.images.get_mut(img_key).unwrap().draw_objects(
+            self.vao.unwrap(),
+            self.vertex_num,
+            screen_width,
+            screen_height,
+        );
     }
 
     pub fn draw_point_relations(&self, lhs_key: &str, rhs_key: &str) {
-        self.images
-            .get(lhs_key)
-            .unwrap()
-            .draw_point_relations(rhs_key);
+        let lhs_img = self.images.get(lhs_key).unwrap();
+        let rhs_img = self.images.get(rhs_key).unwrap();
+        self.point_relation_shader
+            .set_uniform_variables(lhs_img.shader(), rhs_img.shader());
+        lhs_img.draw_point_relations(rhs_key);
     }
+
+    pub fn draw_imgui(&mut self) {}
 
     pub fn load_image(&mut self, path: &Path, id: &str, vflip: bool) -> Result<()> {
         let mut image = image::open(path)?;
@@ -102,6 +108,10 @@ impl ImageManager {
         }
     }
 
+    pub fn get_current_image_shader(&self, key: &str) -> &ImageShader {
+        self.images.get(key).unwrap().shader()
+    }
+
     /// add point (`x`, `y`, `z`) to image of `image_id`.
     /// Argument `x` and `y` are treated as point on the image coordinate system.
     /// A value range of `z` is from -1.0 to 1.0.
@@ -109,6 +119,12 @@ impl ImageManager {
     pub fn add_point(&mut self, image_id: &str, x: f32, y: f32, z: f32, r: f32, g: f32, b: f32) {
         let image = self.images.remove(image_id).unwrap();
         let image = image.add_point(x, y, z, r, g, b);
+        self.images.insert(image_id.to_string(), image);
+    }
+
+    pub fn add_arrow(&mut self, image_id: &str, x: f32, y: f32, direction: f32, length: f32) {
+        let image = self.images.remove(image_id).unwrap();
+        let image = image.add_arrow(x, y, direction, length);
         self.images.insert(image_id.to_string(), image);
     }
 
@@ -137,6 +153,30 @@ impl ImageManager {
             ly,
         );
         self.images.insert(rhs_key.to_string(), image);
+    }
+
+    pub fn on_mouse_wheel(&mut self, key: &str, x: f32, y: f32, scale: f32) {
+        if let Some(img) = self.images.get_mut(key) {
+            img.on_mouse_wheel(x, y, scale);
+        }
+    }
+
+    pub fn on_mouse_button_down(&mut self, key: &str, fx: f32, fy: f32) {
+        if let Some(img) = self.images.get_mut(key) {
+            img.on_mouse_button_down(fx, fy);
+        }
+    }
+
+    pub fn on_mouse_button_up(&mut self, key: &str) {
+        if let Some(img) = self.images.get_mut(key) {
+            img.on_mouse_button_up();
+        }
+    }
+
+    pub fn on_mouse_motion_event(&mut self, key: &str, dx: f32, dy: f32) {
+        if let Some(img) = self.images.get_mut(key) {
+            img.on_mouse_motion_event(dx, dy);
+        }
     }
 }
 

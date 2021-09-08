@@ -65,7 +65,7 @@ impl Viewer {
         viewer
     }
 
-    pub fn render(self, mut presenter: Presenter, image_manager: ImageManager) -> Result<()> {
+    pub fn render(self, mut presenter: Presenter, mut image_manager: ImageManager) -> Result<()> {
         let mut imgui_context = imgui::Context::create();
         imgui_context.set_ini_filename(None);
 
@@ -88,13 +88,14 @@ impl Viewer {
                         ..
                     } => break 'running,
                     _ => {
-                        presenter.process_event(&event);
+                        let (im, _) = presenter.process_event(&event, image_manager);
+                        image_manager = im;
                     }
                 }
             }
             // draw image to fbo
             let (width, height) = self.window.size();
-            presenter.draw(width, height, &image_manager);
+            image_manager = presenter.draw(width, height, image_manager);
 
             // draw fbo to screen
             self.draw(presenter.get_texture_id());
@@ -108,7 +109,7 @@ impl Viewer {
             let ui = imgui_context.frame();
 
             self.draw_imgui(&ui); // 情報表示のみ
-            presenter.draw_imgui(&ui, &image_manager); // event取得
+            image_manager = presenter.draw_imgui(&ui, image_manager); // event取得
 
             imgui_sdl2_context.prepare_render(&ui, &self.window);
             renderer.render(ui);

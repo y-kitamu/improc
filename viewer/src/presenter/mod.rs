@@ -21,13 +21,19 @@ pub trait PresenterMode {
     fn get_mode_name(&self) -> &str;
 
     /// process user action event, and return whether event is processed.
-    fn process_event(&mut self, event: &Event, fbo_width: u32, fbo_height: u32) -> bool;
+    fn process_event(
+        &self,
+        event: &Event,
+        fbo_width: u32,
+        fbo_height: u32,
+        image_manager: ImageManager,
+    ) -> (ImageManager, bool);
 
     /// draw images and points to frame buffer object for off screen rendering
-    fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager);
+    fn draw(&mut self, width: u32, height: u32, image_manager: ImageManager) -> ImageManager;
 
     /// draw imgui object to screen (not frame buffer object)
-    fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager);
+    fn draw_imgui(&self, ui: &imgui::Ui, image_manager: ImageManager) -> ImageManager;
 }
 
 pub struct Presenter {
@@ -78,12 +84,21 @@ impl Presenter {
         }
     }
 
-    pub fn process_event(&mut self, event: &Event) -> bool {
+    pub fn process_event(
+        &mut self,
+        event: &Event,
+        image_manager: ImageManager,
+    ) -> (ImageManager, bool) {
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
-        current_mode.process_event(event, self.fbo_width, self.fbo_height)
+        current_mode.process_event(event, self.fbo_width, self.fbo_height, image_manager)
     }
 
-    pub fn draw(&mut self, width: u32, height: u32, image_manager: &ImageManager) {
+    pub fn draw(
+        &mut self,
+        width: u32,
+        height: u32,
+        mut image_manager: ImageManager,
+    ) -> ImageManager {
         self.update_window_size(width, height);
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
@@ -94,16 +109,17 @@ impl Presenter {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
-        current_mode.draw(width, height, image_manager);
+        image_manager = current_mode.draw(width, height, image_manager);
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
             gl::Viewport(0, 0, width as i32, height as i32);
         }
+        image_manager
     }
 
-    pub fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: &ImageManager) {
+    pub fn draw_imgui(&mut self, ui: &imgui::Ui, mut image_manager: ImageManager) -> ImageManager {
         let current_mode = self.modes.get_mut(&self.current_modes_key).unwrap();
-        current_mode.draw_imgui(ui, image_manager);
+        image_manager = current_mode.draw_imgui(ui, image_manager);
         ui.main_menu_bar(|| {
             ui.menu(&im_str!("modes"), true, || {
                 for key in self.modes.keys() {
@@ -117,6 +133,7 @@ impl Presenter {
                 }
             })
         });
+        image_manager
     }
 }
 

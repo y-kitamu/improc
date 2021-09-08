@@ -5,7 +5,7 @@ use crate::{
     Vector3,
 };
 
-use super::{compile_shader, image_shader::ImageShader, UniformVariable};
+use super::{compile_shader, image_shader::ImageShader, set_float, set_mat4, UniformVariable};
 
 pub struct LineShader {
     id: u32,
@@ -21,32 +21,13 @@ impl LineShader {
         }
     }
 
-    pub fn set_uniform_variables(&self, lhs: &ImageShader, rhs: &ImageShader) {
-        let mut model = UniformVariable {
-            name: CString::new("uModel").unwrap(),
-            value: vec![lhs.model_mat.value, rhs.model_mat.value],
-        };
-        (&mut model).value[0][0][0] *= 0.5;
-        (&mut model).value[0][3][0] *= 0.5;
-        (&mut model).value[0][3][0] -= 0.5;
-        (&mut model).value[1][0][0] *= 0.5;
-        (&mut model).value[1][3][0] *= 0.5;
-        (&mut model).value[1][3][0] += 0.5;
-        let view = UniformVariable {
-            name: CString::new("uView").unwrap(),
-            value: vec![lhs.view_mat.value, rhs.view_mat.value],
-        };
-        let projection = UniformVariable {
-            name: CString::new("uProjection").unwrap(),
-            value: vec![lhs.projection_mat.value, rhs.projection_mat.value],
-        };
-
+    pub fn set_uniform_variables(&self, img_shader: &ImageShader) {
         unsafe {
             gl::UseProgram(self.id);
+            set_mat4(self.id, &img_shader.model_mat);
+            set_mat4(self.id, &img_shader.view_mat);
+            set_mat4(self.id, &img_shader.projection_mat);
             set_vec3(self.id, &self.color);
-            set_mat4_array(self.id, &model);
-            set_mat4_array(self.id, &view);
-            set_mat4_array(self.id, &projection);
         }
     }
 }
