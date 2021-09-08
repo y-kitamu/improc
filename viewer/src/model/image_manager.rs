@@ -178,6 +178,30 @@ impl ImageManager {
             img.on_mouse_motion_event(dx, dy);
         }
     }
+
+    pub fn set_point_size(&mut self, pt_size: f32) {
+        self.images.iter_mut().for_each(|(key, val)| {
+            val.set_point_size(pt_size);
+        });
+    }
+
+    pub fn get_point_size(&self, key: &str) -> f32 {
+        match self.images.get(key) {
+            Some(img) => img.get_point_size(),
+            None => 1.0,
+        }
+    }
+
+    pub fn get_line_color(&self) -> (f32, f32, f32) {
+        let color = &self.point_relation_shader.color.value;
+        (color.x, color.y, color.z)
+    }
+
+    pub fn set_line_color(&mut self, r: f32, g: f32, b: f32) {
+        self.point_relation_shader.color.value.x = r;
+        self.point_relation_shader.color.value.y = g;
+        self.point_relation_shader.color.value.z = b;
+    }
 }
 
 #[cfg(test)]

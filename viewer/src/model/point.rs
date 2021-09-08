@@ -83,6 +83,14 @@ impl Points {
             gl::UseProgram(0);
         }
     }
+
+    pub fn set_point_size(&mut self, pt_size: f32) {
+        self.shader.point_size.value = pt_size;
+    }
+
+    pub fn get_point_size(&self) -> f32 {
+        self.shader.point_size.value
+    }
 }
 
 struct Color {

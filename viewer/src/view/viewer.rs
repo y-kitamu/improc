@@ -150,7 +150,7 @@ impl Viewer {
             .size([300.0, 450.0], imgui::Condition::FirstUseEver)
             .position([10.0, 10.0], imgui::Condition::FirstUseEver)
             .build(&ui, || {
-                ui.text(im_str!("OpenGL Test App ver1.0"));
+                ui.text(im_str!("Viewer ver1.0"));
                 ui.separator();
                 ui.text(im_str!("FPS : {:.1}", ui.io().framerate));
                 let display_size = ui.io().display_size;

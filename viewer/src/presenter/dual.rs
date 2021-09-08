@@ -55,12 +55,12 @@ impl DualImagePresenter {
         image_manager
     }
 
-    fn get_current_shader_key(&self, fbo_width: u32) -> &str {
+    fn get_current_image_key(&self, fbo_width: u32) -> &str {
         let (x, _y) = get_mouse_pos();
         if (x as u32) < fbo_width / 2 {
-            &self.current_shader_key
+            &self.current_image_keys.0
         } else {
-            &self.current_shader_key
+            &self.current_image_keys.1
         }
     }
 }
@@ -77,7 +77,7 @@ impl PresenterMode for DualImagePresenter {
         fbo_height: u32,
         mut image_manager: ImageManager,
     ) -> (ImageManager, bool) {
-        let key = self.get_current_shader_key(fbo_width);
+        let key = self.get_current_image_key(fbo_width);
         let processed = match event {
             Event::MouseWheel { y, direction, .. } => {
                 let (mx, my) = get_mouse_pos();
@@ -140,7 +140,52 @@ impl PresenterMode for DualImagePresenter {
         image_manager
     }
 
-    fn draw_imgui(&self, ui: &imgui::Ui, image_manager: ImageManager) -> ImageManager {
+    fn draw_imgui(&mut self, ui: &imgui::Ui, mut image_manager: ImageManager) -> ImageManager {
+        imgui::Window::new(im_str!("Parameters"))
+            .size([200.0, 250.0], imgui::Condition::FirstUseEver)
+            .position([700.0, 10.0], imgui::Condition::FirstUseEver)
+            .build(ui, || {
+                ui.text(im_str!("Image parameter"));
+                ui.separator();
+
+                for key in image_manager.get_image_keys() {
+                    let mut flag = self.current_image_keys.0 == *key;
+                    if ui.radio_button(&im_str!("{}0", key), &mut flag, true) {
+                        self.current_image_keys.0 = key.clone();
+                    }
+                    ui.same_line(100.0);
+                    let mut flag = self.current_image_keys.1 == *key;
+                    if ui.radio_button(&im_str!("{}1", key), &mut flag, true) {
+                        self.current_image_keys.1 = key.clone();
+                    }
+                }
+
+                ui.separator();
+                ui.text(im_str!("Point parameter"));
+                let mut pt_size = image_manager.get_point_size(&self.current_image_keys.0);
+                if imgui::Slider::new(im_str!("Point size"))
+                    .range(1.0..=100.0)
+                    .build(&ui, &mut pt_size)
+                {
+                    image_manager.set_point_size(pt_size);
+                }
+                ui.separator();
+
+                ui.text(im_str!("Line parameter"));
+                let (mut r, mut g, mut b) = image_manager.get_line_color();
+                if imgui::Slider::new(im_str!("Color (R)"))
+                    .range(0.0..=1.0)
+                    .build(&ui, &mut r)
+                    || imgui::Slider::new(im_str!("Color (G)"))
+                        .range(0.0..=1.0)
+                        .build(&ui, &mut g)
+                    || imgui::Slider::new(im_str!("Color (B)"))
+                        .range(0.0..=1.0)
+                        .build(&ui, &mut b)
+                {
+                    image_manager.set_line_color(r, g, b);
+                }
+            });
         image_manager
     }
 }

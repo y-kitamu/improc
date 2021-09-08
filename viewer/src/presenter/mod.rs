@@ -33,7 +33,7 @@ pub trait PresenterMode {
     fn draw(&mut self, width: u32, height: u32, image_manager: ImageManager) -> ImageManager;
 
     /// draw imgui object to screen (not frame buffer object)
-    fn draw_imgui(&self, ui: &imgui::Ui, image_manager: ImageManager) -> ImageManager;
+    fn draw_imgui(&mut self, ui: &imgui::Ui, image_manager: ImageManager) -> ImageManager;
 }
 
 pub struct Presenter {

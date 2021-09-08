@@ -224,6 +224,14 @@ impl Image {
         }
         self
     }
+
+    pub fn set_point_size(&mut self, pt_size: f32) {
+        self.points.set_point_size(pt_size);
+    }
+
+    pub fn get_point_size(&self) -> f32 {
+        self.points.get_point_size()
+    }
 }
 
 #[cfg(test)]

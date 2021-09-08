@@ -1,3 +1,4 @@
+use imgui::im_str;
 use sdl2::{event::Event, mouse::MouseWheelDirection};
 
 use crate::{
@@ -14,7 +15,6 @@ const DEFAULT_SHADER_KEY: &str = "default";
 /// Presenter of MVP architecture.
 /// This class holds frame buffer object for off-screen rendering.
 pub struct DefaultPresenterMode {
-    current_shader_key: String,
     current_image_key: String,
 }
 
@@ -22,12 +22,8 @@ impl DefaultPresenterMode {
     pub const MODE_NAME: &'static str = "default";
 
     pub fn new() -> Self {
-        let current_shader_key = DEFAULT_SHADER_KEY.to_string();
         let current_image_key = "".to_string();
-        DefaultPresenterMode {
-            current_shader_key,
-            current_image_key,
-        }
+        DefaultPresenterMode { current_image_key }
     }
 }
 
@@ -96,7 +92,33 @@ impl PresenterMode for DefaultPresenterMode {
         image_manager
     }
 
-    fn draw_imgui(&self, ui: &imgui::Ui, image_manager: ImageManager) -> ImageManager {
+    fn draw_imgui(&mut self, ui: &imgui::Ui, mut image_manager: ImageManager) -> ImageManager {
+        imgui::Window::new(im_str!("Parameters"))
+            .size([300.0, 450.0], imgui::Condition::FirstUseEver)
+            .position([400.0, 10.0], imgui::Condition::FirstUseEver)
+            .build(&ui, || {
+                // TODO: image_managerにdelegateする
+                ui.text(im_str!("Image parameter"));
+                ui.separator();
+
+                for key in image_manager.get_image_keys() {
+                    let mut flag = self.current_image_key == *key;
+                    if ui.radio_button(&im_str!("{}", key), &mut flag, true) {
+                        self.current_image_key = key.clone();
+                    }
+                }
+
+                ui.separator();
+                ui.text(im_str!("Point parameter"));
+                let mut pt_size = image_manager.get_point_size(&self.current_image_key);
+                if imgui::Slider::new(im_str!("Point size"))
+                    .range(1.0..=100.0)
+                    .build(&ui, &mut pt_size)
+                {
+                    image_manager.set_point_size(pt_size);
+                }
+                ui.separator();
+            });
         image_manager
     }
 }
