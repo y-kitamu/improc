@@ -236,13 +236,39 @@ impl Image {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::CString;
+
+    use cgmath::One;
+
+    use crate::{shader::UniformVariable, Matrix4};
+
     use super::*;
+
+    fn get_image_shader() -> ImageShader {
+        ImageShader {
+            id: 0,
+            model_mat: UniformVariable {
+                name: CString::new("uModel").unwrap(),
+                value: Matrix4::one(),
+            },
+            view_mat: UniformVariable {
+                name: CString::new("uView").unwrap(),
+                value: Matrix4::one(),
+            },
+            projection_mat: UniformVariable {
+                name: CString::new("uProjection").unwrap(),
+                value: Matrix4::one(),
+            },
+            is_dragging: false,
+        };
+    }
 
     #[test]
     fn test_image() {
-        let image = Image {
+        let mut image = Image {
             key: "default".to_string(),
             texture_id: 0,
+            image_shader: get_image_shader(),
             width: 1920,
             height: 1080,
             points: Points::new(),
@@ -252,13 +278,41 @@ mod tests {
         assert_eq!(image.id(), 0u32);
         assert_eq!(image.w(), 1920u32);
         assert_eq!(image.h(), 1080u32);
+        assert_eq!(image.shader().id, 0u32);
+        assert!(!image.shader().is_dragging);
 
-        let image = image.add_point(1280.0f32, 1080.0f32, 0.1, 1.0, 1.0, 1.0);
+        image.on_mouse_wheel(1.0, -2.0, 1.2);
+        assert!((image.image_shader.model_mat.value[0][0] - 1.2).abs() < 1e-5);
+        assert!((image.image_shader.model_mat.value[1][1] - 1.2).abs() < 1e-5);
+        assert!((image.image_shader.model_mat.value[3][0] + 0.2).abs() < 1e-5);
+        assert!((image.image_shader.model_mat.value[3][1] - 0.4).abs() < 1e-5);
+
+        image.on_mouse_button_down(-1.3, 1.5);
+        assert!(image.image_shader.is_dragging);
+        image.on_mouse_motion_event(0.0, -0.05);
+        assert!((image.image_shader.model_mat.value[3][1] - 0.35).abs() < 1e-5);
+        image.on_mouse_button_up();
+        assert!(!image.image_shader.is_dragging);
+        image.on_mouse_button_down(0.9, -0.9);
+        assert!(!image.image_shader.is_dragging);
+
+        image.set_point_size(20.0);
+        assert!((image.get_point_size() - 20.0).abs() < 1e-5);
+
+        let (x, y) = image.convert_to_norm_coord(960.0f32, 540.0f32);
+        assert!((x - 0.0).abs() < 1e-5);
+        assert!((y - 0.0).abs() < 1e-5);
+
+        let image = image.add_point(1080.0f32, 1080.0f32, 0.1, 1.0, 1.0, 1.0);
+        assert!(image
+            .points
+            .is_exist_point(1080.0 / 1920.0 * 2.0 - 1.0, 1.0));
 
         let other_key = "other";
         let other_img = Image {
             key: other_key.to_string(),
             texture_id: 1,
+            image_shader: get_image_shader(),
             width: 1280,
             height: 1080,
             points: Points::new(),
@@ -267,7 +321,7 @@ mod tests {
         };
         let image = image.add_point_relation(1200.0, 1080.0, &other_img, 540.0, 240.0);
         assert_eq!(image.point_relations.len(), 0);
-        let image = image.add_point_relation(1280.0, 1080.0, &other_img, 540.0, 240.0);
+        let image = image.add_point_relation(1080.0, 1080.0, &other_img, 540.0, 240.0);
         assert_eq!(image.point_relations.len(), 1);
     }
 }

@@ -206,6 +206,8 @@ impl ImageManager {
 
 #[cfg(test)]
 mod tests {
+    use crate::{shader::UniformVariable, Vector3};
+
     use super::super::{arrow::Arrows, point::Points};
 
     use super::*;
@@ -217,6 +219,10 @@ mod tests {
             vao: None,
             vbo: None,
             vertex_num: 0,
+            point_relation_shader: RelationLineShader {
+                id: 0,
+                color: UniformVariable::new("uColor", Vector3::new(1.0, 0.0, 0.0)),
+            },
         };
 
         assert!(manager.images.is_empty());

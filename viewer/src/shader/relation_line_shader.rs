@@ -8,7 +8,7 @@ use crate::{
 use super::{compile_shader, image_shader::ImageShader, UniformVariable};
 
 pub struct RelationLineShader {
-    id: u32,
+    pub id: u32,
     pub color: UniformVariable<Vector3>,
 }
 

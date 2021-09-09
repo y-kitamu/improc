@@ -3,7 +3,7 @@ use std::ffi::CString;
 use super::{compile_shader, image_shader::ImageShader, set_float, set_mat4, UniformVariable};
 
 pub struct PointShader {
-    id: u32,
+    pub id: u32,
     pub point_size: UniformVariable<f32>,
 }
 

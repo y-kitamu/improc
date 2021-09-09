@@ -9,11 +9,11 @@ use crate::{utility::scale_matrix, Matrix4};
 use super::{compile_shader, set_mat4, UniformVariable};
 
 pub struct ImageShader {
-    id: u32,
+    pub id: u32,
     pub model_mat: UniformVariable<Matrix4>,
     pub view_mat: UniformVariable<Matrix4>,
     pub projection_mat: UniformVariable<Matrix4>,
-    is_dragging: bool, // 画像をdrag中かどうか
+    pub is_dragging: bool, // 画像をdrag中かどうか
 }
 
 impl ImageShader {

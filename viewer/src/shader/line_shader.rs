@@ -8,7 +8,7 @@ use crate::{
 use super::{compile_shader, image_shader::ImageShader, set_float, set_mat4, UniformVariable};
 
 pub struct LineShader {
-    id: u32,
+    pub id: u32,
     pub color: UniformVariable<Vector3>,
 }
 
