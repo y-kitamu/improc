@@ -7,10 +7,10 @@ use crate::{define_drawable, define_gl_primitive, model::register_primitive};
 use super::{Drawable, GLPrimitive};
 
 pub struct PointRelations {
-    vao: Option<u32>,
-    vbo: Option<u32>,
-    vertex_num: i32,
-    lines: Vec<Line>,
+    pub vao: Option<u32>,
+    pub vbo: Option<u32>,
+    pub vertex_num: i32,
+    pub lines: Vec<Line>,
 }
 
 define_gl_primitive!(PointRelations);
@@ -59,7 +59,7 @@ impl PointRelations {
     }
 }
 
-struct Line {
+pub struct Line {
     x: f32,
     y: f32,
     other_x: f32,

@@ -206,11 +206,82 @@ impl ImageManager {
 
 #[cfg(test)]
 mod tests {
-    use crate::{shader::UniformVariable, Vector3};
+    use std::ffi::CString;
+
+    use cgmath::One;
+
+    use crate::{
+        shader::{line_shader::LineShader, point_shader::PointShader, UniformVariable},
+        Matrix4, Vector3,
+    };
 
     use super::super::{arrow::Arrows, point::Points};
 
     use super::*;
+
+    fn get_image_shader() -> ImageShader {
+        ImageShader {
+            id: 0,
+            model_mat: UniformVariable {
+                name: CString::new("uModel").unwrap(),
+                value: Matrix4::one(),
+            },
+            view_mat: UniformVariable {
+                name: CString::new("uView").unwrap(),
+                value: Matrix4::one(),
+            },
+            projection_mat: UniformVariable {
+                name: CString::new("uProjection").unwrap(),
+                value: Matrix4::one(),
+            },
+            is_dragging: false,
+        }
+    }
+
+    fn get_points() -> Points {
+        Points {
+            points: Vec::new(),
+            vao: Some(1),
+            vbo: Some(2),
+            vertex_num: 12,
+            shader: PointShader {
+                id: 2,
+                point_size: UniformVariable {
+                    name: CString::new("point_size").unwrap(),
+                    value: 10.0,
+                },
+            },
+        }
+    }
+
+    fn get_arrows() -> Arrows {
+        Arrows {
+            vao: Some(2),
+            vbo: Some(2),
+            vertex_num: 20,
+            arrows: Vec::new(),
+            shader: LineShader {
+                id: 0,
+                color: UniformVariable {
+                    name: CString::new("uColor").unwrap(),
+                    value: Vector3::new(1.0, 0.0, 0.0),
+                },
+            },
+        }
+    }
+
+    fn get_image() -> Image {
+        Image {
+            key: "default".to_string(),
+            texture_id: 1,
+            image_shader: get_image_shader(),
+            width: 1920,
+            height: 1080,
+            points: get_points(),
+            arrows: get_arrows(),
+            point_relations: HashMap::new(),
+        }
+    }
 
     #[test]
     fn test_image_manager() {
@@ -225,8 +296,24 @@ mod tests {
             },
         };
 
-        assert!(manager.images.is_empty());
+        let key: &str = "default";
 
-        assert_eq!(manager.get_image_keys().len(), 0);
+        assert_eq!(manager.get_texture_id(key), 0);
+
+        assert!(manager.images.is_empty());
+        let image = get_image();
+        manager.images.insert(image.key().to_string(), image);
+        let keys: Vec<&String> = manager.get_image_keys().collect();
+        assert_eq!(keys.len(), 1);
+        assert_eq!(keys[0].clone(), key.to_string());
+
+        assert_eq!(manager.get_texture_id(key), 1);
+
+        let (w, h) = manager.get_texture_image_size(key);
+        assert_eq!(w, 1920);
+        assert_eq!(h, 1080);
+
+        let imshader = manager.get_current_image_shader(key);
+        assert_eq!(imshader.id, 0);
     }
 }

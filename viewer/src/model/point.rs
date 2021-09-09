@@ -17,11 +17,11 @@ const DEFAULT_POINTS_SHADER_KEY: &str = "points";
 /// `points`に保持される点は正規化座標系上の点である。
 /// (画像の左下を(-1.0, -1.0)、右上を(1.0, 1.0)で中心を(0, 0)とする座標系)
 pub struct Points {
-    points: Vec<Point>,
-    vao: Option<u32>,
-    vbo: Option<u32>,
-    vertex_num: i32,
-    shader: PointShader,
+    pub points: Vec<Point>,
+    pub vao: Option<u32>,
+    pub vbo: Option<u32>,
+    pub vertex_num: i32,
+    pub shader: PointShader,
 }
 
 define_gl_primitive!(Points);
@@ -101,8 +101,8 @@ struct Color {
 
 /// 点情報を保持する
 /// locには画像の中心を原点(0, 0)、右上を(1, 1)とした座標系での値を保持する。
-struct Point {
-    loc: Point3<f32>,
+pub struct Point {
+    pub loc: Point3<f32>,
     color: Color,
 }
 

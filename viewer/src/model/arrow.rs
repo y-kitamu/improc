@@ -10,13 +10,14 @@ use crate::{
 
 use super::{Drawable, GLPrimitive};
 
+const DEFAULT_LINE_SHADER_KEY: &str = "line";
+
 pub struct Arrows {
-    vao: Option<u32>,
-    vbo: Option<u32>,
-    vertex_num: i32,
-    arrows: Vec<Arrow>,
-    shader_id: Option<u32>,
-    shader: Option<LineShader>,
+    pub vao: Option<u32>,
+    pub vbo: Option<u32>,
+    pub vertex_num: i32,
+    pub arrows: Vec<Arrow>,
+    pub shader: LineShader,
 }
 
 define_gl_primitive!(Arrows);
@@ -28,8 +29,7 @@ impl Arrows {
             vbo: None,
             vertex_num: 0,
             arrows: Vec::new(),
-            shader_id: None,
-            shader: None,
+            shader: LineShader::new(DEFAULT_LINE_SHADER_KEY),
         }
     }
 
@@ -65,7 +65,7 @@ impl Arrows {
 }
 
 /// x, y, length はnormalized coordinate (-1.0 ~ 1.0), directionはradian単位
-struct Arrow {
+pub struct Arrow {
     x: f32,
     y: f32,
     direction: f32,

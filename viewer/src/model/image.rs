@@ -16,14 +16,14 @@ const DEFAULT_IMAGE_SHADER: &str = "default";
 /// `points_vertex`は点をOpenGL描画するためのvao, vboを保持する
 /// `point_relation_vertex`は画像間の直線をOptnGLで描画するためのvao, vboを保持する。
 pub struct Image {
-    key: String,
-    texture_id: u32, // openglのtexture id
-    image_shader: ImageShader,
-    width: u32,
-    height: u32,
-    points: Points,
-    arrows: Arrows,
-    point_relations: HashMap<String, PointRelations>,
+    pub key: String,
+    pub texture_id: u32, // openglのtexture id
+    pub image_shader: ImageShader,
+    pub width: u32,
+    pub height: u32,
+    pub points: Points,
+    pub arrows: Arrows,
+    pub point_relations: HashMap<String, PointRelations>,
 }
 
 impl Image {
@@ -240,7 +240,10 @@ mod tests {
 
     use cgmath::One;
 
-    use crate::{shader::UniformVariable, Matrix4};
+    use crate::{
+        shader::{line_shader::LineShader, point_shader::PointShader, UniformVariable},
+        Matrix4, Vector3,
+    };
 
     use super::*;
 
@@ -260,7 +263,39 @@ mod tests {
                 value: Matrix4::one(),
             },
             is_dragging: false,
-        };
+        }
+    }
+
+    fn get_points() -> Points {
+        Points {
+            points: Vec::new(),
+            vao: Some(1),
+            vbo: Some(2),
+            vertex_num: 12,
+            shader: PointShader {
+                id: 2,
+                point_size: UniformVariable {
+                    name: CString::new("point_size").unwrap(),
+                    value: 10.0,
+                },
+            },
+        }
+    }
+
+    fn get_arrows() -> Arrows {
+        Arrows {
+            vao: Some(2),
+            vbo: Some(2),
+            vertex_num: 20,
+            arrows: Vec::new(),
+            shader: LineShader {
+                id: 0,
+                color: UniformVariable {
+                    name: CString::new("uColor").unwrap(),
+                    value: Vector3::new(1.0, 0.0, 0.0),
+                },
+            },
+        }
     }
 
     #[test]
@@ -271,8 +306,8 @@ mod tests {
             image_shader: get_image_shader(),
             width: 1920,
             height: 1080,
-            points: Points::new(),
-            arrows: Arrows::new(),
+            points: get_points(),
+            arrows: get_arrows(),
             point_relations: HashMap::new(),
         };
         assert_eq!(image.id(), 0u32);
@@ -281,19 +316,27 @@ mod tests {
         assert_eq!(image.shader().id, 0u32);
         assert!(!image.shader().is_dragging);
 
-        image.on_mouse_wheel(1.0, -2.0, 1.2);
+        image.on_mouse_wheel(1.0, -0.5, 1.2);
         assert!((image.image_shader.model_mat.value[0][0] - 1.2).abs() < 1e-5);
         assert!((image.image_shader.model_mat.value[1][1] - 1.2).abs() < 1e-5);
-        assert!((image.image_shader.model_mat.value[3][0] + 0.2).abs() < 1e-5);
-        assert!((image.image_shader.model_mat.value[3][1] - 0.4).abs() < 1e-5);
+        assert!(
+            (image.image_shader.model_mat.value[3][0] + 0.2).abs() < 1e-5,
+            "model_mat.value[3][0] = {}",
+            image.image_shader.model_mat.value[3][0]
+        );
+        assert!((image.image_shader.model_mat.value[3][1] - 0.1).abs() < 1e-5);
 
-        image.on_mouse_button_down(-1.3, 1.5);
+        image.on_mouse_button_down(-1.3, 1.05);
         assert!(image.image_shader.is_dragging);
         image.on_mouse_motion_event(0.0, -0.05);
-        assert!((image.image_shader.model_mat.value[3][1] - 0.35).abs() < 1e-5);
+        assert!(
+            (image.image_shader.model_mat.value[3][1] - 0.05).abs() < 1e-5,
+            "model_mat.valule[3][1] = {}",
+            image.image_shader.model_mat.value[3][1]
+        );
         image.on_mouse_button_up();
         assert!(!image.image_shader.is_dragging);
-        image.on_mouse_button_down(0.9, -0.9);
+        image.on_mouse_button_down(0.9, -1.17);
         assert!(!image.image_shader.is_dragging);
 
         image.set_point_size(20.0);
@@ -304,9 +347,10 @@ mod tests {
         assert!((y - 0.0).abs() < 1e-5);
 
         let image = image.add_point(1080.0f32, 1080.0f32, 0.1, 1.0, 1.0, 1.0);
+        println!("points[0] = {:?}", image.points.points[0].loc);
         assert!(image
             .points
-            .is_exist_point(1080.0 / 1920.0 * 2.0 - 1.0, 1.0));
+            .is_exist_point(1080.0 / 1920.0 * 2.0 - 1.0, -1.0));
 
         let other_key = "other";
         let other_img = Image {
@@ -315,8 +359,8 @@ mod tests {
             image_shader: get_image_shader(),
             width: 1280,
             height: 1080,
-            points: Points::new(),
-            arrows: Arrows::new(),
+            points: get_points(),
+            arrows: get_arrows(),
             point_relations: HashMap::new(),
         };
         let image = image.add_point_relation(1200.0, 1080.0, &other_img, 540.0, 240.0);
