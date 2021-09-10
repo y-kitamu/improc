@@ -35,7 +35,7 @@ impl Arrows {
 
     /// add arrow to (x, y). direction (radian) = `dir`, length = `length`
     pub fn add_arrow(&mut self, x: f32, y: f32, dir: f32, length: f32) {
-        Arrow::new(x, y, dir, length);
+        self.arrows.push(Arrow::new(x, y, dir, length));
     }
 
     pub fn build(&mut self) {
@@ -85,8 +85,8 @@ impl Arrow {
     fn to_vec(&self) -> Vec<f32> {
         let tx = self.x + self.length * self.direction.cos();
         let ty = self.y + self.length * self.direction.sin();
-        let lrad = std::f32::consts::PI + self.direction + std::f32::consts::FRAC_PI_6;
-        let rrad = std::f32::consts::PI + self.direction - std::f32::consts::FRAC_PI_6;
+        let lrad = std::f32::consts::PI + self.direction - std::f32::consts::FRAC_PI_6;
+        let rrad = std::f32::consts::PI + self.direction + std::f32::consts::FRAC_PI_6;
         let lx = tx + self.length * 0.2 * lrad.cos();
         let ly = ty + self.length * 0.2 * lrad.sin();
         let rx = tx + self.length * 0.2 * rrad.cos();
@@ -96,5 +96,45 @@ impl Arrow {
             tx, ty, 1.0, lx, ly, 1.0, // left wing
             tx, ty, 1.0, rx, ry, 1.0, // right wing
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{shader::UniformVariable, Vector3};
+
+    use super::*;
+
+    #[test]
+    fn test_arrows() {
+        let mut arrs = Arrows {
+            vao: Some(0),
+            vbo: Some(1),
+            vertex_num: 10,
+            arrows: Vec::new(),
+            shader: LineShader {
+                id: 1,
+                color: UniformVariable::new("uColor", Vector3::new(1.0, 0.0, 0.0)),
+            },
+        };
+
+        arrs.add_arrow(1.0, 0.1, 0.0, 5.0);
+        assert_eq!(arrs.arrows.len(), 1);
+    }
+
+    #[test]
+    fn test_arrow() {
+        let arr = Arrow::new(1.0, 0.5, std::f32::consts::FRAC_PI_2, 1.0);
+        let vec = arr.to_vec();
+        assert!((vec[0] - 1.0).abs() < 1e-5);
+        assert!((vec[1] - 0.5).abs() < 1e-5);
+        assert!((vec[2] - 1.0).abs() < 1e-5);
+        assert!((vec[3] - 1.0).abs() < 1e-5);
+        assert!((vec[4] - 1.5).abs() < 1e-5);
+        assert!((vec[5] - 1.0).abs() < 1e-5);
+        assert!((vec[9] - 0.9).abs() < 1e-5, "lhs x = {}", vec[9]);
+        assert!((vec[10] - vec[16]).abs() < 1e-5);
+        assert!(vec[10] < vec[4]);
+        assert!((vec[15] - 1.1).abs() < 1e-5);
     }
 }
