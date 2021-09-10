@@ -60,10 +60,10 @@ impl PointRelations {
 }
 
 pub struct Line {
-    x: f32,
-    y: f32,
-    other_x: f32,
-    other_y: f32,
+    pub x: f32,
+    pub y: f32,
+    pub other_x: f32,
+    pub other_y: f32,
 }
 
 impl Line {

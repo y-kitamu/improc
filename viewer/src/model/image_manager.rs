@@ -180,7 +180,7 @@ impl ImageManager {
     }
 
     pub fn set_point_size(&mut self, pt_size: f32) {
-        self.images.iter_mut().for_each(|(key, val)| {
+        self.images.iter_mut().for_each(|(_, val)| {
             val.set_point_size(pt_size);
         });
     }
@@ -270,9 +270,9 @@ mod tests {
         }
     }
 
-    fn get_image() -> Image {
+    fn get_image(key: &str) -> Image {
         Image {
-            key: "default".to_string(),
+            key: key.to_string(),
             texture_id: 1,
             image_shader: get_image_shader(),
             width: 1920,
@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(manager.get_texture_id(key), 0);
 
         assert!(manager.images.is_empty());
-        let image = get_image();
+        let image = get_image("default");
         manager.images.insert(image.key().to_string(), image);
         let keys: Vec<&String> = manager.get_image_keys().collect();
         assert_eq!(keys.len(), 1);
@@ -315,5 +315,48 @@ mod tests {
 
         let imshader = manager.get_current_image_shader(key);
         assert_eq!(imshader.id, 0);
+
+        manager.add_point(key, 960.0, 540.0, -0.5, 0.3, 0.2, 0.5);
+        assert_eq!(manager.images[key].points.points.len(), 1);
+        assert!(manager.images[key].points.points[0].loc.x < 1e-5);
+        assert!(manager.images[key].points.points[0].loc.y < 1e-5);
+
+        let other_key = "other";
+        manager
+            .images
+            .insert(other_key.to_string(), get_image(other_key));
+        manager.add_point_relation(key, 960.0, 540.0, other_key, 0.0, 0.0);
+        assert!(manager.images[key].point_relations[other_key].lines[0].x < 1e-5);
+        assert!(manager.images[key].point_relations[other_key].lines[0].y < 1e-5);
+        assert!(
+            (manager.images[key].point_relations[other_key].lines[0].other_x + 1.0).abs() < 1e-5
+        );
+        assert!(
+            (manager.images[key].point_relations[other_key].lines[0].other_y - 1.0).abs() < 1e-5,
+            "other_y = {}",
+            manager.images[key].point_relations[other_key].lines[0].other_y
+        );
+
+        manager.on_mouse_wheel(key, 0.2, -0.2, 2.0);
+        assert!((manager.images[key].image_shader.model_mat.value[0][0] - 2.0).abs() < 1e-5);
+        assert!((manager.images[key].image_shader.model_mat.value[1][1] - 2.0).abs() < 1e-5);
+        assert!((manager.images[key].image_shader.model_mat.value[3][0] + 0.2).abs() < 1e-5);
+        assert!((manager.images[key].image_shader.model_mat.value[3][1] - 0.2).abs() < 1e-5);
+
+        manager.on_mouse_motion_event(key, 0.0, 0.0);
+        assert!((manager.images[key].image_shader.model_mat.value[3][0] + 0.2).abs() < 1e-5);
+        assert!((manager.images[key].image_shader.model_mat.value[3][1] - 0.2).abs() < 1e-5);
+
+        manager.on_mouse_button_up(key);
+        assert!(!manager.images[key].image_shader.is_dragging);
+
+        manager.set_point_size(12.0);
+        assert!((manager.get_point_size(other_key) - 12.0).abs() < 1e-5);
+
+        manager.set_line_color(0.5, 1.0, 0.0);
+        let (r, g, b) = manager.get_line_color();
+        assert!((r - 0.5).abs() < 1e-5);
+        assert!((g - 1.0).abs() < 1e-5);
+        assert!((b - 0.0).abs() < 1e-5);
     }
 }
