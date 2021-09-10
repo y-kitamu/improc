@@ -189,3 +189,14 @@ impl PresenterMode for DualImagePresenter {
         image_manager
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dual() {
+        let mode = DualImagePresenter::new();
+        assert_eq!(mode.get_mode_name(), "dual");
+    }
+}

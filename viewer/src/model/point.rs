@@ -150,5 +150,11 @@ mod tests {
 
         assert!(pt.is_equal_to(1.0, 0.5));
         assert!(!pt.is_equal_to(1.0, 0.55));
+
+        let res = pt.to_vec();
+        assert_eq!(res.len(), 6);
+        assert!((res[0] - 1.0).abs() < 1e-5);
+        assert!((res[3] - 0.0).abs() < 1e-5);
+        assert!((res[4] - 1.0).abs() < 1e-5);
     }
 }

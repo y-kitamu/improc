@@ -80,3 +80,41 @@ impl Line {
         ]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_line() {
+        let line = Line {
+            x: 1.0,
+            y: 0.1,
+            other_x: 2.0,
+            other_y: 1.0,
+        };
+        let res = line.to_vec();
+        assert_eq!(res.len(), 8);
+        assert!((res[0] - 1.0).abs() < 1e-5);
+        assert!((res[1] - 0.1).abs() < 1e-5);
+        assert!((res[2] - 1.0).abs() < 1e-5);
+        assert!((res[3] - 0.0).abs() < 1e-5);
+        assert!((res[4 + 0] - 2.0).abs() < 1e-5);
+        assert!((res[4 + 1] - 1.0).abs() < 1e-5);
+        assert!((res[4 + 2] - 1.0).abs() < 1e-5);
+        assert!((res[4 + 3] - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_pl() {
+        let mut pl = PointRelations {
+            vao: None,
+            vbo: None,
+            vertex_num: 10,
+            lines: Vec::new(),
+        };
+
+        pl.add_relation(1.0, 1.0, 0.5, 0.5);
+        assert_eq!(pl.lines.len(), 1);
+    }
+}
