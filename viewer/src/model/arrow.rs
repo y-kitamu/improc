@@ -136,6 +136,7 @@ mod tests {
                 color: UniformVariable::new("uColor", Vector4::<f32>::new(1.0, 0.0, 0.0, 1.0)),
                 scale: UniformVariable::new("uScale", 1.0f32),
             },
+            is_show: true,
         };
 
         arrs.add_arrow(1.0, 0.1, 0.0, 5.0);
@@ -159,7 +160,7 @@ mod tests {
         assert!((vec[7] - 1.0).abs() < 1e-5);
         assert!((vec[15] - 0.9).abs() < 1e-5, "lhs x = {}", vec[9]);
         assert!((vec[16] - vec[26]).abs() < 1e-5);
-        assert!(vec[16] < vec[7]);
+        assert!(vec[16] < vec[6]);
         assert!((vec[25] - 1.1).abs() < 1e-5);
     }
 }

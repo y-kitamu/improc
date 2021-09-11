@@ -158,7 +158,7 @@ mod tests {
         let patch_size = 31;
         let n_pairs = 256;
         let kpt = KeyPoint::new(0, 0, 1.0, 0, 0.0);
-        let data: Vec<u8> = vec![1, 2, 3, 0, 5, 6];
+        let data: Vec<u8> = vec![1, 2, 3, 0, 5, 6, 0, 0, 0];
         let x_stride = 1;
         let y_stride = 3;
         let brief = Brief::new(patch_size, 5, n_pairs);
@@ -183,7 +183,7 @@ mod tests {
         let n_pairs = 3;
         let mut brief = Brief::new(patch_size, 3, n_pairs);
 
-        let length = 5;
+        let length = 6;
         let img = image::GrayImage::from_fn(length, length, |x, y| image::Luma([(x + y) as u8]));
         let kpts = vec![
             KeyPoint::new(2, 2, 1.0, 0, 0.0),

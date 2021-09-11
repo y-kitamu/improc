@@ -238,11 +238,11 @@ impl Image {
 mod tests {
     use std::ffi::CString;
 
-    use cgmath::One;
+    use cgmath::{One, Vector4};
 
     use crate::{
         shader::{arrow_line_shader::ArrowLineShader, point_shader::PointShader, UniformVariable},
-        Matrix4, Vector3,
+        Matrix4,
     };
 
     use super::*;
@@ -279,6 +279,7 @@ mod tests {
                     value: 10.0,
                 },
             },
+            is_show: true,
         }
     }
 
@@ -292,9 +293,11 @@ mod tests {
                 id: 0,
                 color: UniformVariable {
                     name: CString::new("uColor").unwrap(),
-                    value: Vector3::new(1.0, 0.0, 0.0),
+                    value: Vector4::<f32>::new(1.0, 0.0, 0.0, 1.0),
                 },
+                scale: UniformVariable::new("uScale", 1.0f32),
             },
+            is_show: true,
         }
     }
 
