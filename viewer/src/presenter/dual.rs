@@ -1,28 +1,11 @@
-use std::collections::HashMap;
-
 use imgui::im_str;
 use sdl2::{event::Event, mouse::MouseWheelDirection};
 
-use crate::{
-    model::image_manager::ImageManager,
-    shader::{
-        image_shader::ImageShader, point_shader::PointShader,
-        relation_line_shader::RelationLineShader,
-    },
-    utility::{get_mouse_pos, scale_matrix},
-};
+use crate::{model::image_manager::ImageManager, utility::get_mouse_pos};
 
 use super::PresenterMode;
 
-const SHADER_LIST: [&str; 1] = ["default"];
-const POINTS_SHADER_LIST: [&str; 1] = ["points"];
-
-const DEFAULT_SHADER_KEY: &str = "default";
-const DEFAULT_POINTS_SHADER_KEY: &str = "points";
-const DEFAULT_LINE_SHADER_KEY: &str = "line";
-
 pub struct DualImagePresenter {
-    current_shader_key: String,
     current_image_keys: (String, String),
 }
 
@@ -30,12 +13,8 @@ impl DualImagePresenter {
     const MODE_NAME: &'static str = "dual";
 
     pub fn new() -> Self {
-        let current_shader_key = DEFAULT_SHADER_KEY.to_string();
         let current_image_keys = ("".to_string(), "".to_string());
-        DualImagePresenter {
-            current_shader_key,
-            current_image_keys,
-        }
+        DualImagePresenter { current_image_keys }
     }
 
     // TODO: refactor. default.rsの`draw`とほぼおなじコード
@@ -160,31 +139,10 @@ impl PresenterMode for DualImagePresenter {
                     }
                 }
 
+                image_manager.draw_points_imgui(ui, &self.current_image_keys.0);
+                image_manager.draw_arrows_imgui(ui, &self.current_image_keys.0);
+                image_manager.draw_lines_imgui(ui);
                 ui.separator();
-                ui.text(im_str!("Point parameter"));
-                let mut pt_size = image_manager.get_point_size(&self.current_image_keys.0);
-                if imgui::Slider::new(im_str!("Point size"))
-                    .range(1.0..=100.0)
-                    .build(&ui, &mut pt_size)
-                {
-                    image_manager.set_point_size(pt_size);
-                }
-                ui.separator();
-
-                ui.text(im_str!("Line parameter"));
-                let (mut r, mut g, mut b) = image_manager.get_line_color();
-                if imgui::Slider::new(im_str!("Color (R)"))
-                    .range(0.0..=1.0)
-                    .build(&ui, &mut r)
-                    || imgui::Slider::new(im_str!("Color (G)"))
-                        .range(0.0..=1.0)
-                        .build(&ui, &mut g)
-                    || imgui::Slider::new(im_str!("Color (B)"))
-                        .range(0.0..=1.0)
-                        .build(&ui, &mut b)
-                {
-                    image_manager.set_line_color(r, g, b);
-                }
             });
         image_manager
     }

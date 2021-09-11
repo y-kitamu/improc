@@ -3,13 +3,13 @@ use std::{ffi::CString, io::Read};
 use std::{fs::File, path::Path};
 
 use anyhow::Result;
-use cgmath::{Array, Matrix};
+use cgmath::{Array, Matrix, Vector4};
 use gl::types::*;
 
 use crate::{Matrix4, Vector3};
 
+pub mod arrow_line_shader;
 pub mod image_shader;
-pub mod line_shader;
 pub mod point_shader;
 pub mod relation_line_shader;
 
@@ -127,6 +127,15 @@ unsafe fn check_compile_errors(shader: u32, type_: &str) {
 unsafe fn set_vec3(shader_id: u32, u_var: &UniformVariable<Vector3>) {
     // println!("shader_id : {}, value = {:?}", shader_id, u_var.value);
     gl::Uniform3fv(
+        gl::GetUniformLocation(shader_id, u_var.name.as_ptr()),
+        1,
+        u_var.value.as_ptr(),
+    );
+}
+
+unsafe fn set_vec4(shader_id: u32, u_var: &UniformVariable<Vector4<f32>>) {
+    // println!("shader_id : {}, value = {:?}", shader_id, u_var.value);
+    gl::Uniform4fv(
         gl::GetUniformLocation(shader_id, u_var.name.as_ptr()),
         1,
         u_var.value.as_ptr(),

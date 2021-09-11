@@ -103,6 +103,7 @@ impl Presenter {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
             gl::Enable(gl::PROGRAM_POINT_SIZE);
+            // gl::Enable(gl::BLEND);
 
             gl::Viewport(0, 0, width as i32, height as i32);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);

@@ -127,7 +127,8 @@ impl Viewer {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
             // gl::Enable(gl::DEPTH_TEST);
-            gl::Disable(gl::BLEND);
+            // gl::Disable(gl::BLEND);
+            // gl::Enable(gl::BLEND);
             // gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
             // gl::Disable(gl::CULL_FACE);
 
@@ -163,7 +164,6 @@ impl Viewer {
                     "Mouse Positioin : ({:.1}, {:.1})",
                     mouse_pos[0], mouse_pos[1]
                 ));
-
                 ui.separator();
             });
     }

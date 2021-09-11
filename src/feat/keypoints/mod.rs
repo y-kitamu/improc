@@ -13,6 +13,8 @@ pub struct KeyPoint {
 }
 
 impl KeyPoint {
+    /// Coordinate of `x`, `y` is image coordinates.
+    /// `direction` is direction of the keypoint in radians.
     pub fn new(x: usize, y: usize, cornerness: f32, level: u32, direction: f32) -> Self {
         KeyPoint {
             loc: Point2::new(x as f32, y as f32),
@@ -34,6 +36,7 @@ impl KeyPoint {
         self.cornerness
     }
 
+    /// return direction of the key point in radian
     pub fn direction(&self) -> f32 {
         self.direction
     }

@@ -1,15 +1,14 @@
 use std::ffi::CString;
 
-use crate::{
-    shader::{set_mat4_array, set_vec3},
-    Vector3,
-};
+use cgmath::Vector4;
+
+use crate::shader::{set_mat4_array, set_vec4};
 
 use super::{compile_shader, image_shader::ImageShader, UniformVariable};
 
 pub struct RelationLineShader {
     pub id: u32,
-    pub color: UniformVariable<Vector3>,
+    pub color: UniformVariable<Vector4<f32>>,
 }
 
 impl RelationLineShader {
@@ -17,7 +16,7 @@ impl RelationLineShader {
         let id = compile_shader(shader_path_stem);
         RelationLineShader {
             id,
-            color: UniformVariable::new("uColor", Vector3::new(1.0, 0.0, 0.0)),
+            color: UniformVariable::new("uColor", Vector4::<f32>::new(1.0, 0.0, 0.0, 1.0)),
         }
     }
 
@@ -43,7 +42,7 @@ impl RelationLineShader {
 
         unsafe {
             gl::UseProgram(self.id);
-            set_vec3(self.id, &self.color);
+            set_vec4(self.id, &self.color);
             set_mat4_array(self.id, &model);
             set_mat4_array(self.id, &view);
             set_mat4_array(self.id, &projection);

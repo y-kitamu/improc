@@ -66,6 +66,7 @@ impl FASTCornerDetector {
         }
     }
 
+    /// calc the keypoint's direction in radians.
     fn calc_direction(&self, raw: &Vec<u8>, w: usize, cx: usize, cy: usize) -> f32 {
         let mut m10 = 0;
         let mut m01 = 0;

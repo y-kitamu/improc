@@ -1,9 +1,9 @@
 //! FAST corner detector + brief特徴量 + brute force matchingのsample
 use cgmath::Point3;
 use clap::{AppSettings, Clap};
-use image::{imageops::rotate180, DynamicImage, GenericImageView, GrayImage, ImageBuffer, Pixel};
-use nalgebra::{matrix, Matrix2x3};
-use std::{cmp::min, ops::Deref, path::Path, time::Instant};
+use image::{imageops::rotate180, DynamicImage, GenericImageView, GrayImage};
+use nalgebra::Matrix2x3;
+use std::{cmp::min, path::Path, time::Instant};
 
 use improc::{
     feat::{
@@ -98,14 +98,14 @@ fn main() {
     )
     .unwrap();
 
-    // let affine_mat: Matrix2x3<f32> = get_affine_mat(&image, &opts);
-    // let transformed = image::GrayImage::from_raw(
-    //     gray.width(),
-    //     gray.height(),
-    //     affine_transform(&gray, &affine_mat),
-    // )
-    // .unwrap();
-    let transformed = rotate180(&gray);
+    let affine_mat: Matrix2x3<f32> = get_affine_mat(&image, &opts);
+    let transformed = image::GrayImage::from_raw(
+        gray.width(),
+        gray.height(),
+        affine_transform(&gray, &affine_mat),
+    )
+    .unwrap();
+    // let transformed = rotate180(&gray);
 
     let (all_feats0, all_feats1) = timer!("Fast Detector", {
         let fast = FASTCornerDetector::new(3, (50 * 50) as f32, 1, true);
@@ -166,6 +166,14 @@ fn main() {
         matcher.run("gray", "transformed")
     });
 
+    let arrows0: Vec<(f32, f32, f32, f32)> = feats0
+        .iter()
+        .map(|kpt| (kpt.x(), kpt.y(), kpt.direction(), 1.0))
+        .collect();
+    let arrows1: Vec<(f32, f32, f32, f32)> = feats1
+        .iter()
+        .map(|kpt| (kpt.x(), kpt.y(), kpt.direction(), 1.0))
+        .collect();
     let pts: Vec<Vec<Point3<f32>>> = vec![feats0, feats1]
         .iter()
         .map(|feats| feats.iter().map(|kpt| kpt.cgpt3d()).collect())
@@ -195,6 +203,9 @@ fn main() {
         .add_points("transformed", &pts[1], 0.0, 0.0, 1.0)
         .add_points("color", &pts[0], 0.0, 0.0, 1.0)
         .add_point_relations(&mps, &ids)
+        .add_arrows("color", &arrows0)
+        .add_arrows("gray", &arrows0)
+        .add_arrows("transformed", &arrows1)
         .run()
         .unwrap();
 }

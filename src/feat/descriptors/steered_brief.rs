@@ -13,7 +13,7 @@ pub struct SteeredBrief {
     brief: Brief,
     n_discrete: u32,
     border_offset: u32,
-    rotated_binary_pairs: Vec<Vec<(Point2<f32>, Point2<f32>)>>,
+    pub rotated_binary_pairs: Vec<Vec<(Point2<f32>, Point2<f32>)>>,
 }
 
 impl SteeredBrief {
@@ -73,7 +73,14 @@ impl Extractor<BriefBitVec> for SteeredBrief {
                 continue;
             }
 
-            let rotate_idx = (kpt.direction() / angle_pitch).round() as usize;
+            let mut radian = kpt.direction();
+            if radian < 0.0 {
+                radian = std::f32::consts::PI * 2.0 + radian;
+            }
+            let mut rotate_idx = (radian / angle_pitch).round() as usize;
+            if rotate_idx >= self.n_discrete as usize {
+                rotate_idx -= self.n_discrete as usize;
+            }
             let desc = self.brief.calc_brief(
                 &kpt,
                 &data,
@@ -89,7 +96,7 @@ impl Extractor<BriefBitVec> for SteeredBrief {
 
 #[cfg(test)]
 mod tests {
-    use crate::{imgproc::affine_transform, linalg::merge_affine_transforms};
+    use crate::imgproc::affine_transform;
 
     use super::*;
 

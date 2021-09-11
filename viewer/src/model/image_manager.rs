@@ -3,6 +3,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use image::DynamicImage;
+use imgui::im_str;
 use log::warn;
 
 use crate::{
@@ -23,6 +24,7 @@ pub struct ImageManager {
     vbo: Option<u32>,
     vertex_num: i32,
     point_relation_shader: RelationLineShader,
+    is_show_point_relation: bool,
 }
 
 define_gl_primitive!(ImageManager);
@@ -36,6 +38,7 @@ impl ImageManager {
             vbo: Some(vbo),
             vertex_num,
             point_relation_shader: RelationLineShader::new(DEFAULT_POIRNT_RELATION_SHADER),
+            is_show_point_relation: true,
         }
     }
 
@@ -56,14 +59,14 @@ impl ImageManager {
     }
 
     pub fn draw_point_relations(&self, lhs_key: &str, rhs_key: &str) {
-        let lhs_img = self.images.get(lhs_key).unwrap();
-        let rhs_img = self.images.get(rhs_key).unwrap();
-        self.point_relation_shader
-            .set_uniform_variables(lhs_img.shader(), rhs_img.shader());
-        lhs_img.draw_point_relations(rhs_key);
+        if self.is_show_point_relation {
+            let lhs_img = self.images.get(lhs_key).unwrap();
+            let rhs_img = self.images.get(rhs_key).unwrap();
+            self.point_relation_shader
+                .set_uniform_variables(lhs_img.shader(), rhs_img.shader());
+            lhs_img.draw_point_relations(rhs_key);
+        }
     }
-
-    pub fn draw_imgui(&mut self) {}
 
     pub fn load_image(&mut self, path: &Path, id: &str, vflip: bool) -> Result<()> {
         let mut image = image::open(path)?;
@@ -179,28 +182,110 @@ impl ImageManager {
         }
     }
 
-    pub fn set_point_size(&mut self, pt_size: f32) {
-        self.images.iter_mut().for_each(|(_, val)| {
-            val.set_point_size(pt_size);
-        });
-    }
+    pub fn draw_points_imgui(&mut self, ui: &imgui::Ui, image_key: &str) {
+        ui.separator();
+        ui.text(im_str!("Point parameter"));
 
-    pub fn get_point_size(&self, key: &str) -> f32 {
-        match self.images.get(key) {
+        let mut is_hide = match self.images.get(image_key) {
+            Some(img) => !img.points.is_show,
+            None => false,
+        };
+        if ui.checkbox(im_str!("Hide points"), &mut is_hide) {
+            self.images.iter_mut().for_each(|(_, val)| {
+                val.points.is_show = !is_hide;
+            });
+        }
+
+        let mut pt_size = match self.images.get(image_key) {
             Some(img) => img.get_point_size(),
             None => 1.0,
+        };
+
+        if imgui::Slider::new(im_str!("Point size"))
+            .range(1.0..=100.0)
+            .build(&ui, &mut pt_size)
+        {
+            self.images.iter_mut().for_each(|(_, val)| {
+                val.set_point_size(pt_size);
+            });
         }
     }
 
-    pub fn get_line_color(&self) -> (f32, f32, f32) {
-        let color = &self.point_relation_shader.color.value;
-        (color.x, color.y, color.z)
+    pub fn draw_arrows_imgui(&mut self, ui: &imgui::Ui, image_key: &str) {
+        ui.separator();
+        ui.text(im_str!("Arrows parameter"));
+        let (mut r, mut g, mut b, mut a, mut scale, mut is_hide) = match self.images.get(image_key)
+        {
+            Some(img) => {
+                let color = &img.arrows.shader.color.value;
+                (
+                    color.x,
+                    color.y,
+                    color.z,
+                    color.w,
+                    img.arrows.shader.scale.value,
+                    !img.arrows.is_show,
+                )
+            }
+            None => (1.0, 1.0, 1.0, 1.0, 1.0, false),
+        };
+
+        if ui.checkbox(im_str!("Hide arrows"), &mut is_hide) {
+            self.images.iter_mut().for_each(|(_, val)| {
+                val.arrows.is_show = !is_hide;
+            });
+        }
+
+        if imgui::Slider::new(im_str!("Line Scale"))
+            .range(0.1..=100.0)
+            .build(&ui, &mut scale)
+        {
+            self.images.iter_mut().for_each(|(_, val)| {
+                val.arrows.shader.scale.value = scale;
+            });
+        }
+
+        let mut flag = false;
+        flag |= imgui::Slider::new(im_str!("Arrow Color (R)"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut r);
+        flag |= imgui::Slider::new(im_str!("Arrow Color (G)"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut g);
+        flag |= imgui::Slider::new(im_str!("Arrow Color (B)"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut b);
+        flag |= imgui::Slider::new(im_str!("Arrow Alpha"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut a);
+        if flag {
+            self.images.iter_mut().for_each(|(_, val)| {
+                val.arrows.set_color(r, g, b, a);
+            });
+        }
     }
 
-    pub fn set_line_color(&mut self, r: f32, g: f32, b: f32) {
-        self.point_relation_shader.color.value.x = r;
-        self.point_relation_shader.color.value.y = g;
-        self.point_relation_shader.color.value.z = b;
+    pub fn draw_lines_imgui(&mut self, ui: &imgui::Ui) {
+        ui.separator();
+        ui.text(im_str!("Line parameter"));
+
+        let mut is_hide = !self.is_show_point_relation;
+        if ui.checkbox(im_str!("Hide lines"), &mut is_hide) {
+            self.is_show_point_relation = !is_hide;
+        }
+
+        imgui::Slider::new(im_str!("Line Color (R)"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut self.point_relation_shader.color.value.x);
+        imgui::Slider::new(im_str!("Line Color (G)"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut self.point_relation_shader.color.value.y);
+        imgui::Slider::new(im_str!("Line Color (B)"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut self.point_relation_shader.color.value.z);
+        imgui::Slider::new(im_str!("Line Alpha"))
+            .range(0.0..=1.0)
+            .build(&ui, &mut self.point_relation_shader.color.value.w);
     }
 }
 
@@ -211,7 +296,7 @@ mod tests {
     use cgmath::One;
 
     use crate::{
-        shader::{line_shader::LineShader, point_shader::PointShader, UniformVariable},
+        shader::{line_shader::ArrowLineShader, point_shader::PointShader, UniformVariable},
         Matrix4, Vector3,
     };
 
@@ -260,7 +345,7 @@ mod tests {
             vbo: Some(2),
             vertex_num: 20,
             arrows: Vec::new(),
-            shader: LineShader {
+            shader: ArrowLineShader {
                 id: 0,
                 color: UniformVariable {
                     name: CString::new("uColor").unwrap(),
@@ -349,14 +434,5 @@ mod tests {
 
         manager.on_mouse_button_up(key);
         assert!(!manager.images[key].image_shader.is_dragging);
-
-        manager.set_point_size(12.0);
-        assert!((manager.get_point_size(other_key) - 12.0).abs() < 1e-5);
-
-        manager.set_line_color(0.5, 1.0, 0.0);
-        let (r, g, b) = manager.get_line_color();
-        assert!((r - 0.5).abs() < 1e-5);
-        assert!((g - 1.0).abs() < 1e-5);
-        assert!((b - 0.0).abs() < 1e-5);
     }
 }

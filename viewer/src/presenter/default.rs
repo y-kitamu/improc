@@ -1,16 +1,9 @@
 use imgui::im_str;
 use sdl2::{event::Event, mouse::MouseWheelDirection};
 
-use crate::{
-    model::image_manager::ImageManager,
-    utility::{get_mouse_pos, scale_matrix},
-};
+use crate::{model::image_manager::ImageManager, utility::get_mouse_pos};
 
 use super::PresenterMode;
-
-const SHADER_LIST: [&str; 1] = ["default"];
-
-const DEFAULT_SHADER_KEY: &str = "default";
 
 /// Presenter of MVP architecture.
 /// This class holds frame buffer object for off-screen rendering.
@@ -97,10 +90,8 @@ impl PresenterMode for DefaultPresenterMode {
             .size([300.0, 450.0], imgui::Condition::FirstUseEver)
             .position([400.0, 10.0], imgui::Condition::FirstUseEver)
             .build(&ui, || {
-                // TODO: image_managerにdelegateする
                 ui.text(im_str!("Image parameter"));
                 ui.separator();
-
                 for key in image_manager.get_image_keys() {
                     let mut flag = self.current_image_key == *key;
                     if ui.radio_button(&im_str!("{}", key), &mut flag, true) {
@@ -108,15 +99,8 @@ impl PresenterMode for DefaultPresenterMode {
                     }
                 }
 
-                ui.separator();
-                ui.text(im_str!("Point parameter"));
-                let mut pt_size = image_manager.get_point_size(&self.current_image_key);
-                if imgui::Slider::new(im_str!("Point size"))
-                    .range(1.0..=100.0)
-                    .build(&ui, &mut pt_size)
-                {
-                    image_manager.set_point_size(pt_size);
-                }
+                image_manager.draw_points_imgui(ui, &self.current_image_key);
+                image_manager.draw_arrows_imgui(ui, &self.current_image_key);
                 ui.separator();
             });
         image_manager

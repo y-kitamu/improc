@@ -138,7 +138,7 @@ impl App {
         self
     }
 
-    pub fn add_arrows(self, image_key: &str, arrows: Vec<(f32, f32, f32, f32)>) -> Self {
+    pub fn add_arrows(self, image_key: &str, arrows: &Vec<(f32, f32, f32, f32)>) -> Self {
         arrows.iter().fold(self, |app, (x, y, dir, len)| {
             app.add_arrow(image_key, *x, *y, *dir, *len)
         })

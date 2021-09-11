@@ -1,4 +1,3 @@
-use bitvec::prelude::*;
 use image::{GrayImage, Luma, Pixel};
 use nalgebra::Point2;
 use rand_distr::{Distribution, Normal};
@@ -53,20 +52,35 @@ impl Brief {
         stride_y: usize,
         test_pairs: &Vec<(Point2<f32>, Point2<f32>)>,
     ) -> Descriptor<BriefBitVec> {
-        let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);
+        let (cx, cy) = (kpt.x(), kpt.y());
         // let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
         let mut desc: BriefBitVec = BriefBitVec::new(self.binary_test_pairs.len());
         for (p0, p1) in test_pairs {
-            let (dx0, dy0) = (p0.x as usize, p0.y as usize);
-            let (dx1, dy1) = (p1.x as usize, p1.y as usize);
-            let idx0 = (cy + dy0) * stride_y + (cx + dx0) * stride_x;
-            let idx1 = (cy + dy1) * stride_y + (cx + dx1) * stride_x;
-            desc.push(data[idx0] < data[idx1])
+            let val0 = self.calc_pt_value(p0.x + cx, p0.y + cy, data, stride_x, stride_y);
+            let val1 = self.calc_pt_value(p1.x + cx, p1.y + cy, data, stride_x, stride_y);
+            desc.push(val0 < val1);
         }
         Descriptor {
             kpt: kpt.clone(),
             value: desc,
         }
+    }
+
+    fn calc_pt_value(
+        &self,
+        x: f32,
+        y: f32,
+        data: &Vec<u8>,
+        stride_x: usize,
+        stride_y: usize,
+    ) -> f32 {
+        let (ix, iy) = (x as usize, y as usize);
+        let (fx, fy) = (x - ix as f32, y - iy as f32);
+        let idx = iy * stride_y + ix * stride_x;
+        (1.0 - fx) * (1.0 - fy) * data[idx] as f32
+            + fx * (1.0 - fy) * data[idx + stride_x] as f32
+            + (1.0 - fx) * fy * data[idx + stride_y] as f32
+            + fx * fy * data[idx + stride_y + stride_x] as f32
     }
 }
 

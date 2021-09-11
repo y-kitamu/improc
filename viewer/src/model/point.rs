@@ -22,6 +22,7 @@ pub struct Points {
     pub vbo: Option<u32>,
     pub vertex_num: i32,
     pub shader: PointShader,
+    pub is_show: bool,
 }
 
 define_gl_primitive!(Points);
@@ -34,6 +35,7 @@ impl Points {
             vbo: None,
             vertex_num: 0,
             shader: PointShader::new(DEFAULT_POINTS_SHADER_KEY),
+            is_show: true,
         }
     }
 
@@ -77,10 +79,12 @@ impl Points {
     }
 
     pub fn draw(&self, image_shader: &ImageShader) {
-        self.shader.set_uniform_variables(image_shader);
-        draw!(self, gl::POINTS);
-        unsafe {
-            gl::UseProgram(0);
+        if self.is_show {
+            self.shader.set_uniform_variables(image_shader);
+            draw!(self, gl::POINTS);
+            unsafe {
+                gl::UseProgram(0);
+            }
         }
     }
 

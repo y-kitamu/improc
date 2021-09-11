@@ -3,7 +3,7 @@ use std::{collections::HashMap, ffi::c_void};
 use image::{DynamicImage, GenericImageView};
 use log::warn;
 
-use crate::{draw, shader::image_shader::ImageShader, utility::convert_to_rgb};
+use crate::{shader::image_shader::ImageShader, utility::convert_to_rgb};
 
 use super::{arrow::Arrows, point::Points, point_relation::PointRelations, Drawable};
 
@@ -241,7 +241,7 @@ mod tests {
     use cgmath::One;
 
     use crate::{
-        shader::{line_shader::LineShader, point_shader::PointShader, UniformVariable},
+        shader::{arrow_line_shader::ArrowLineShader, point_shader::PointShader, UniformVariable},
         Matrix4, Vector3,
     };
 
@@ -288,7 +288,7 @@ mod tests {
             vbo: Some(2),
             vertex_num: 20,
             arrows: Vec::new(),
-            shader: LineShader {
+            shader: ArrowLineShader {
                 id: 0,
                 color: UniformVariable {
                     name: CString::new("uColor").unwrap(),
