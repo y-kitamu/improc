@@ -69,6 +69,7 @@ where
 }
 
 fn main() {
+    env_logger::init();
     let opts: Opts = Opts::parse();
     let filename = match &opts.filename {
         Some(fname) => fname.clone(),

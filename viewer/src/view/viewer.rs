@@ -1,5 +1,8 @@
 use std::{
+    ffi::c_void,
     fmt::{self, Display},
+    fs,
+    path::{Path, PathBuf},
     time::Duration,
 };
 
@@ -36,6 +39,7 @@ pub struct Viewer {
     vao: Option<u32>,
     vbo: Option<u32>,
     vertex_num: i32,
+    output_dir: PathBuf,
 }
 
 define_gl_primitive!(Viewer);
@@ -59,6 +63,7 @@ impl Viewer {
             vao: Some(vao),
             vbo: Some(vbo),
             vertex_num,
+            output_dir: Path::new(env!("CARGO_MANIFEST_DIR")).join("../outputs/screen_shots/"),
         };
 
         info!("OK : Init Viewer.");
@@ -147,6 +152,24 @@ impl Viewer {
     }
 
     fn draw_imgui(&self, ui: &imgui::Ui) {
+        ui.main_menu_bar(|| {
+            ui.menu(&im_str!("file"), true, || {
+                if imgui::MenuItem::new(&im_str!("ScreenShot")).build(ui) {
+                    println!("start save screenshot");
+                    match self.save_screen() {
+                        Ok(path) => {
+                            info!(
+                                "Success to save screen. Output to {}",
+                                path.to_str().unwrap()
+                            );
+                        }
+                        Err(_) => {
+                            info!("Failed to save screen.");
+                        }
+                    }
+                }
+            })
+        });
         imgui::Window::new(im_str!("Information"))
             .size([300.0, 450.0], imgui::Condition::FirstUseEver)
             .position([10.0, 10.0], imgui::Condition::FirstUseEver)
@@ -166,5 +189,35 @@ impl Viewer {
                 ));
                 ui.separator();
             });
+    }
+
+    fn save_screen(&self) -> Result<PathBuf> {
+        let (width, height) = self.window.size();
+        let data: Vec<u8> = vec![0; (width * height * 4) as usize];
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+            gl::ReadPixels(
+                0,
+                0,
+                width as i32,
+                height as i32,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                data.as_ptr() as *mut c_void,
+            );
+        }
+
+        if !self.output_dir.exists() {
+            fs::create_dir_all(self.output_dir.as_path())?;
+        }
+        let mut idx = 0;
+        while self.output_dir.join(format!("{:05}.png", idx)).exists() {
+            idx += 1;
+        }
+        let output_path = self.output_dir.join(format!("{:05}.png", idx));
+
+        image::imageops::flip_vertical(&image::RgbaImage::from_raw(width, height, data).unwrap())
+            .save(output_path.as_path())?;
+        Ok(output_path)
     }
 }
