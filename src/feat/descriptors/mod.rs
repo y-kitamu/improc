@@ -34,18 +34,18 @@ where
 }
 
 #[derive(Clone)]
-pub struct BriefBitVec {
+pub struct BriefDescriptor {
     pub bits: Vec<u64>,
     values: Vec<bool>,
     max_index: usize,
 }
 
-impl BriefBitVec {
+impl BriefDescriptor {
     pub fn new(n_bits: usize) -> Self {
         let bits = vec![0; (n_bits + 63) / 64];
         let values = vec![false; n_bits];
         let max_index = 0;
-        BriefBitVec {
+        BriefDescriptor {
             bits,
             values,
             max_index,
@@ -69,7 +69,7 @@ impl BriefBitVec {
     }
 }
 
-impl Distance for BriefBitVec {
+impl Distance for BriefDescriptor {
     fn distance(&self, rhs: &Self) -> f32 {
         let dist = self
             .bits
@@ -80,7 +80,7 @@ impl Distance for BriefBitVec {
     }
 }
 
-impl Index<usize> for BriefBitVec {
+impl Index<usize> for BriefDescriptor {
     type Output = bool;
 
     fn index(&self, index: usize) -> &bool {
@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn test_brief_bit_vec() {
         let n_bits = 256;
-        let mut bvec = BriefBitVec::new(n_bits);
+        let mut bvec = BriefDescriptor::new(n_bits);
         for i in 0..n_bits {
             assert_eq!(bvec[i], false);
         }
@@ -118,8 +118,8 @@ mod tests {
     #[test]
     fn test_brief_bit_vec_distance() {
         let n_bits = 256;
-        let mut lhs = BriefBitVec::new(n_bits);
-        let mut rhs = BriefBitVec::new(n_bits);
+        let mut lhs = BriefDescriptor::new(n_bits);
+        let mut rhs = BriefDescriptor::new(n_bits);
         assert_eq!(lhs.distance(&rhs) as usize, 0);
 
         (0..n_bits).for_each(|i| lhs.push(i % 3 == 0));

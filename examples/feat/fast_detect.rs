@@ -20,7 +20,7 @@ fn main() {
     )
     .unwrap();
 
-    let fast = FASTCornerDetector::new(3, (50 * 50) as f32, 1, true);
+    let fast = FASTCornerDetector::new(3, (50 * 50) as f32, 1, 1.0, true);
     let feats = fast.detect(&gray, 0);
 
     let app = viewer::app::App::new(1280, 960).unwrap();

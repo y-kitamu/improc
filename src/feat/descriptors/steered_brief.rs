@@ -7,7 +7,7 @@ use crate::{
     linalg::{get_rotation_matrix, warp_point},
 };
 
-use super::{brief::Brief, BriefBitVec, Descriptor, Extractor};
+use super::{brief::Brief, BriefDescriptor, Descriptor, Extractor};
 
 pub struct SteeredBrief {
     brief: Brief,
@@ -51,17 +51,17 @@ impl SteeredBrief {
     }
 }
 
-impl Extractor<BriefBitVec> for SteeredBrief {
+impl Extractor<BriefDescriptor> for SteeredBrief {
     /// Compute SteeredBrief descriptor.
     /// keypointを中心に画像を回転した際に、patchが画像外にでるkeypointは無視される。
     /// (border_offsetより外側にあるkptsは無視される。)
-    fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BriefBitVec>> {
+    fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BriefDescriptor>> {
         let gauss =
             image::GrayImage::from_raw(img.width(), img.height(), median_filter(img, 5)).unwrap();
         let data = gauss.as_raw();
         let stride_x = Luma::<u8>::CHANNEL_COUNT as usize;
         let stride_y = gauss.width() as usize * stride_x;
-        let mut descriptors: Vec<Descriptor<BriefBitVec>> = Vec::new();
+        let mut descriptors: Vec<Descriptor<BriefDescriptor>> = Vec::new();
         let angle_pitch = 2.0 * std::f32::consts::PI / self.n_discrete as f32;
 
         for kpt in kpts {

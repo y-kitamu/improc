@@ -8,7 +8,7 @@ use std::{cmp::min, path::Path, time::Instant};
 use improc::{
     feat::{
         descriptors::{
-            brief::Brief, steered_brief::SteeredBrief, BriefBitVec, Descriptor, Extractor,
+            brief::Brief, steered_brief::SteeredBrief, BriefDescriptor, Descriptor, Extractor,
         },
         keypoints::{fast::FASTCornerDetector, KeyPoint, KeypointDetector},
         matcher::{brute_force::BruteForceMathcer, Matcher},
@@ -59,9 +59,12 @@ fn compute_descriptor<T>(
     lhs_kpts: &Vec<KeyPoint>,
     rhs_img: &GrayImage,
     rhs_kpts: &Vec<KeyPoint>,
-) -> (Vec<Descriptor<BriefBitVec>>, Vec<Descriptor<BriefBitVec>>)
+) -> (
+    Vec<Descriptor<BriefDescriptor>>,
+    Vec<Descriptor<BriefDescriptor>>,
+)
 where
-    T: Extractor<BriefBitVec>,
+    T: Extractor<BriefDescriptor>,
 {
     let descs0 = desc.compute(lhs_img, lhs_kpts);
     let descs1 = desc.compute(rhs_img, rhs_kpts);
@@ -109,7 +112,7 @@ fn main() {
     // let transformed = rotate180(&gray);
 
     let (all_feats0, all_feats1) = timer!("Fast Detector", {
-        let fast = FASTCornerDetector::new(3, (50 * 50) as f32, 1, true);
+        let fast = FASTCornerDetector::new(3, (50 * 50) as f32, 1, 1.0, true);
         let feats0 = fast.detect(&gray, 0);
         let feats1 = fast.detect(&transformed, 0);
         (feats0, feats1)
@@ -134,37 +137,9 @@ fn main() {
         }
     });
 
-    // println!("desc0");
-    // descs0.iter().for_each(|d| {
-    //     println!(
-    //         "x = {}, y = {}, dir = {}, desc = ({}, {}, {}, {})",
-    //         d.kpt.x(),
-    //         d.kpt.y(),
-    //         d.kpt.direction() * 180.0 * std::f32::consts::FRAC_1_PI,
-    //         d.value.bits[0],
-    //         d.value.bits[1],
-    //         d.value.bits[2],
-    //         d.value.bits[3]
-    //     )
-    // });
-
-    // println!("desc1");
-    // descs1.iter().for_each(|d| {
-    //     println!(
-    //         "x = {}, y = {}, dir = {}, desc = ({}, {}, {}, {})",
-    //         d.kpt.x(),
-    //         d.kpt.y(),
-    //         d.kpt.direction() * 180.0 * std::f32::consts::FRAC_1_PI,
-    //         d.value.bits[0],
-    //         d.value.bits[1],
-    //         d.value.bits[2],
-    //         d.value.bits[3]
-    //     )
-    // });
-
     let matches = timer!("Brute Force Matching", {
-        let matcher = BruteForceMathcer::new("gray", descs0, "transformed", descs1, true);
-        matcher.run("gray", "transformed")
+        let matcher = BruteForceMathcer::new(descs0, descs1, true);
+        matcher.run()
     });
 
     let arrows0: Vec<(f32, f32, f32, f32)> = feats0
@@ -183,10 +158,10 @@ fn main() {
     let ms: Vec<Vec<(String, Point3<f32>)>> = matches
         .iter()
         .map(|m| {
-            m.matches
-                .iter()
-                .map(|(key, val)| (key.clone(), val.kpt.cgpt3d()))
-                .collect()
+            vec![
+                ("gray".to_string(), m.matche.0.kpt.cgpt3d()),
+                ("transformed".to_string(), m.matche.1.kpt.cgpt3d()),
+            ]
         })
         .collect();
 

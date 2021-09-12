@@ -51,16 +51,24 @@ pub struct FASTCornerDetector {
     radius: u32,
     threshold: f32,
     n_pyramid: u32,
+    pyramid_scale: f32,
     circle_points: Vec<Point2<f32>>,
     use_nms: bool,
 }
 
 impl FASTCornerDetector {
-    pub fn new(radius: u32, threshold: f32, n_pyramid: u32, use_nms: bool) -> Self {
+    pub fn new(
+        radius: u32,
+        threshold: f32,
+        n_pyramid: u32,
+        pyramid_scale: f32,
+        use_nms: bool,
+    ) -> Self {
         FASTCornerDetector {
             radius,
             threshold,
             n_pyramid,
+            pyramid_scale,
             circle_points: create_circle(radius),
             use_nms,
         }
@@ -88,8 +96,8 @@ impl KeypointDetector for FASTCornerDetector {
         let raw = image.as_raw();
 
         if level + 1 < self.n_pyramid {
-            let resized_w = image.width() / 2;
-            let resized_h = image.height() / 2;
+            let resized_w = (image.width() as f32 / self.pyramid_scale) as u32;
+            let resized_h = (image.height() as f32 / self.pyramid_scale) as u32;
             let resized_raw = crate::imgproc::resize(&image, resized_w, resized_h);
             let resized_image =
                 image::GrayImage::from_raw(resized_w, resized_h, resized_raw).unwrap();
@@ -151,7 +159,7 @@ mod tests {
 
     #[test]
     fn fast_detect() {
-        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, 1.0, false);
         let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
             if (x < 16) && (y >= 16) {
                 image::Luma([255u8])
@@ -181,7 +189,7 @@ mod tests {
 
     #[test]
     fn fast_detect2() {
-        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, 1.0, false);
         let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
             if (x >= 16) && (y >= 16) {
                 image::Luma([255u8])
@@ -212,7 +220,7 @@ mod tests {
 
     #[test]
     fn fast_detect3() {
-        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, 1.0, false);
         let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
             if (x < 16) && (y < 16) {
                 image::Luma([255u8])
@@ -226,7 +234,7 @@ mod tests {
 
     #[test]
     fn fast_detect4() {
-        let fast = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let fast = FASTCornerDetector::new(3, 10.0f32, 1, 1.0, false);
         let img = image::ImageBuffer::from_fn(32, 32, |x, y| {
             if (x >= 16) && (y < 16) {
                 image::Luma([255u8])
@@ -247,7 +255,7 @@ mod tests {
 
     #[test]
     fn fast3() {
-        let fast3 = FASTCornerDetector::new(3, 10.0f32, 1, false);
+        let fast3 = FASTCornerDetector::new(3, 10.0f32, 1, 1.0, false);
         assert_eq!(fast3.circle_points.len(), 16);
         assert!((fast3.circle_points[0].x - 3.0f32).abs() < 1e-5);
         assert!((fast3.circle_points[0].y - 0.0f32).abs() < 1e-5);
@@ -276,7 +284,7 @@ mod tests {
 
     #[test]
     fn fast5() {
-        let fast5 = FASTCornerDetector::new(5, 10.0f32, 1, false);
+        let fast5 = FASTCornerDetector::new(5, 10.0f32, 1, 1.0, false);
         assert_eq!(fast5.circle_points.len(), 28);
 
         assert!((fast5.circle_points[0].x - 5.0f32).abs() < 1e-5);
@@ -316,7 +324,7 @@ mod tests {
 
     #[test]
     fn fast9() {
-        let fast9 = FASTCornerDetector::new(9, 10.0f32, 1, false);
+        let fast9 = FASTCornerDetector::new(9, 10.0f32, 1, 1.0, false);
         let n_pts = fast9.circle_points.len();
         let n_half = n_pts / 2;
 
@@ -330,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_calc_direction() {
-        let fast = FASTCornerDetector::new(1, 0.0, 1, false);
+        let fast = FASTCornerDetector::new(1, 0.0, 1, 1.0, false);
         #[rustfmt::skip]
         let vec: Vec<u8> = vec![
             0, 0, 0,

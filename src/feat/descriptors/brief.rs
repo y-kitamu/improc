@@ -4,7 +4,7 @@ use rand_distr::{Distribution, Normal};
 
 use crate::{feat::keypoints::KeyPoint, imgproc::median_filter};
 
-use super::{BriefBitVec, Descriptor, Extractor};
+use super::{BriefDescriptor, Descriptor, Extractor};
 
 fn clip_point(patch_size: u32, pt: f32) -> f32 {
     let half = (patch_size / 2) as f32;
@@ -51,10 +51,10 @@ impl Brief {
         stride_x: usize,
         stride_y: usize,
         test_pairs: &Vec<(Point2<f32>, Point2<f32>)>,
-    ) -> Descriptor<BriefBitVec> {
+    ) -> Descriptor<BriefDescriptor> {
         let (cx, cy) = (kpt.x(), kpt.y());
         // let mut desc: BitVec = BitVec::with_capacity(self.binary_test_pairs.len());
-        let mut desc: BriefBitVec = BriefBitVec::new(self.binary_test_pairs.len());
+        let mut desc: BriefDescriptor = BriefDescriptor::new(self.binary_test_pairs.len());
         for (p0, p1) in test_pairs {
             let val0 = self.calc_pt_value(p0.x + cx, p0.y + cy, data, stride_x, stride_y);
             let val1 = self.calc_pt_value(p1.x + cx, p1.y + cy, data, stride_x, stride_y);
@@ -84,8 +84,8 @@ impl Brief {
     }
 }
 
-impl Extractor<BriefBitVec> for Brief {
-    fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BriefBitVec>> {
+impl Extractor<BriefDescriptor> for Brief {
+    fn compute(&self, img: &GrayImage, kpts: &Vec<KeyPoint>) -> Vec<Descriptor<BriefDescriptor>> {
         // let gauss =
         //     image::GrayImage::from_raw(img.width(), img.height(), gaussian(img, 9, 3.05)).unwrap();
         let gauss = image::GrayImage::from_raw(
@@ -97,7 +97,7 @@ impl Extractor<BriefBitVec> for Brief {
         let data = gauss.as_raw();
         let stride_x = Luma::<u8>::CHANNEL_COUNT as usize;
         let stride_y = gauss.width() as usize * stride_x;
-        let mut descriptors: Vec<Descriptor<BriefBitVec>> = Vec::new();
+        let mut descriptors: Vec<Descriptor<BriefDescriptor>> = Vec::new();
 
         for kpt in kpts {
             let (cx, cy) = (kpt.x() as usize, kpt.y() as usize);

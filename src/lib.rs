@@ -1,6 +1,7 @@
 pub mod feat;
 pub mod imgproc;
 pub mod linalg;
+pub mod slam;
 pub mod utility;
 
 #[macro_export]
