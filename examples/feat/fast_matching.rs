@@ -1,6 +1,6 @@
 //! FAST corner detector + brief特徴量 + brute force matchingのsample
 use cgmath::Point3;
-use clap::{AppSettings, Clap};
+use clap::{AppSettings, Parser};
 use image::{imageops::rotate180, DynamicImage, GenericImageView, GrayImage};
 use nalgebra::Matrix2x3;
 use std::{cmp::min, path::Path, time::Instant};
@@ -18,9 +18,8 @@ use improc::{
     process_dynamic_image, timer,
 };
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = "1.0", author = "Y. Kitamu")]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
     #[clap(short, long)]
     filename: Option<String>,
