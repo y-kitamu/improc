@@ -15,7 +15,7 @@ members = [
 viewer = { path = "./viewer" }
 env_logger = "0.9.0"
 image = "0.23.14"
-nalgebra = "0.29.0"
+nalgebra = "0.30.0"
 num-traits = "0.2.14"
 bitvec = "0.22.3"
 rand = "0.8.4"
