@@ -21,7 +21,7 @@ bitvec = "0.22.3"
 rand = "0.8.4"
 rand_distr = "0.4.2"
 cgmath = "0.18.0"
-clap = "3.0.0-beta.5"
+clap = "3.0.1"
 
 [dev-dependencies]
 criterion = "0.3"
