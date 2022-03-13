@@ -1,137 +1,60 @@
-mod arrow;
-mod image;
-pub mod image_manager;
-mod point;
-mod point_relation;
+use sdl2::mouse::MouseWheelDirection;
 
-use std::mem;
-use std::os::raw::c_void;
+use crate::{shader::UniformVariable, Mat4};
 
-use gl::types::{GLenum, GLfloat, GLint, GLsizei, GLsizeiptr};
+use self::drawables::Drawable;
 
-pub trait GLPrimitive {
-    fn vao(&self) -> u32;
+pub mod drawables;
+pub mod viewer_model;
 
-    fn vbo(&self) -> u32;
-
-    fn vertex_num(&self) -> i32;
-}
-
-#[macro_export]
-macro_rules! define_gl_primitive {
-    ($t:ty) => {
-        impl GLPrimitive for $t {
-            fn vao(&self) -> u32 {
-                match self.vao {
-                    Some(vao) => vao,
-                    None => 0,
-                }
+macro_rules! callback_method {
+    ($func:ident) => {
+        fn $func(&mut self) {
+            for drawable in self.get_mut_drawables() {
+                drawable.get_mut_shader().$func();
             }
-
-            fn vbo(&self) -> u32 {
-                match self.vbo {
-                    Some(vao) => vao,
-                    None => 0,
-                }
-            }
-
-            fn vertex_num(&self) -> i32 {
-                self.vertex_num
+        }
+    };
+    ($func:ident, $( $arg:ident:$type:ty ), *) => {
+        fn $func(&mut self, $( $arg: $type ),*) {
+            for drawable in self.get_mut_drawables() {
+                drawable.get_mut_shader().$func($( $arg ),*);
             }
         }
     };
 }
 
-trait Drawable {
-    fn draw(&self);
-}
+pub trait Model {
+    fn get_view_mat(&self) -> UniformVariable<Mat4>;
+    fn get_projection_mat(&self) -> UniformVariable<Mat4>;
+    fn get_mut_drawables(&mut self) -> &mut Vec<Box<dyn Drawable>>;
+    fn add_drawable(&mut self, drawable: Box<dyn Drawable>);
 
-#[macro_export]
-macro_rules! draw {
-    ($e:expr, $p:path) => {
-        unsafe {
-            gl::BindVertexArray($e.vao());
-            gl::DrawArrays($p, 0, $e.vertex_num());
-            gl::BindVertexArray(0);
+    fn build(&mut self) {
+        for obj in self.get_mut_drawables() {
+            obj.build();
         }
-    };
-}
-
-#[macro_export]
-macro_rules! define_drawable {
-    ($t:ty, $p:path) => {
-        impl Drawable for $t {
-            fn draw(&self) {
-                unsafe {
-                    gl::BindVertexArray(self.vao());
-                    gl::DrawArrays($p, 0, self.vertex_num());
-                    gl::BindVertexArray(0);
-                }
-            }
-        }
-    };
-}
-
-/// texture描画用のvertex作成
-/// 返り値は(vao id, vbo id, n_vertex)
-pub fn create_simple_vertex() -> (u32, u32, i32) {
-    #[rustfmt::skip]
-    let buf_array: [f32; 30] = [
-        -1.0, -1.0, 1.0, 0.0, 0.0,
-        -1.0, 1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 1.0, 1.0, 1.0,
-        -1.0, -1.0, 1.0, 0.0, 0.0,
-        1.0, 1.0, 1.0, 1.0, 1.0,
-        1.0, -1.0, 1.0, 1.0, 0.0,
-    ];
-    let (vao, vbo) = register_primitive(
-        (30 * mem::size_of::<GLfloat>()) as GLsizeiptr,
-        buf_array.as_ptr() as *const c_void,
-        gl::STATIC_DRAW,
-        vec![gl::FLOAT, gl::FLOAT],
-        vec![3, 2],
-        (5 * mem::size_of::<GLfloat>()) as GLsizei,
-    );
-    (vao, vbo, 6)
-}
-
-/// OpenGLのprimitiveを作成、vao, vboを返す
-fn register_primitive(
-    size: GLsizeiptr,
-    data: *const c_void,
-    usage: GLenum,
-    attribute_type_vec: std::vec::Vec<GLenum>,
-    attribute_size_vec: std::vec::Vec<GLint>,
-    stride: GLsizei,
-) -> (u32, u32) {
-    let mut vao = 0;
-    let mut vbo = 0;
-
-    unsafe {
-        gl::GenVertexArrays(1, &mut vao);
-        gl::GenBuffers(1, &mut vbo);
-
-        gl::BindVertexArray(vao);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(gl::ARRAY_BUFFER, size, data, usage);
-
-        let mut offset = 0;
-        for i in 0..attribute_type_vec.len() {
-            gl::EnableVertexAttribArray(i as u32);
-            gl::VertexAttribPointer(
-                i as u32,
-                attribute_size_vec[i],
-                attribute_type_vec[i],
-                gl::FALSE,
-                stride,
-                (offset * mem::size_of::<GLfloat>()) as *const c_void,
-            );
-            offset += attribute_size_vec[i] as usize;
-        }
-
-        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-        gl::BindVertexArray(0);
     }
 
-    (vao, vbo)
+    /// Draw `Drawable`s.
+    fn draw(&mut self) {
+        let view_mat = self.get_view_mat();
+        let proj_mat = self.get_projection_mat();
+        for obj in self.get_mut_drawables() {
+            if obj.is_draw() {
+                obj.draw(&view_mat, &proj_mat);
+            }
+        }
+    }
+
+    callback_method!(on_mouse_button_down, fx: f32, fy: f32);
+    callback_method!(
+        on_mouse_wheel,
+        cx: f32,
+        cy: f32,
+        y: &i32,
+        direction: &MouseWheelDirection
+    );
+    callback_method!(on_mouse_motion_event, xrefl: f32, yrel: f32);
+    callback_method!(on_mouse_button_up);
 }

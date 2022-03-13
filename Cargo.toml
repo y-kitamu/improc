@@ -37,10 +37,15 @@ harness = false
 name = "affine_transform"
 harness = false
 
-[[example]]
-name = "fast_detect"
-path = "examples/feat/fast_detect.rs"
+# [[example]]
+# name = "fast_detect"
+# path = "examples/feat/fast_detect.rs"
 
-[[example]]
-name = "fast_matching"
-path = "examples/feat/fast_matching.rs"
+# [[example]]
+# name = "fast_matching"
+# path = "examples/feat/fast_matching.rs"
+
+
+# [[example]]
+# name = "sample_viewer"
+# path = "examples/viewer/sample_viewer.rs"

@@ -1,223 +1,178 @@
-use std::{
-    ffi::c_void,
-    fmt::{self, Display},
-    fs,
-    path::{Path, PathBuf},
-    time::Duration,
-};
-
-use anyhow::Result;
+use cgmath::One;
 use imgui::im_str;
-use log::info;
-use sdl2::{event::Event, keyboard::Keycode, Sdl, VideoSubsystem};
+use sdl2::event::Event;
 
 use crate::{
-    define_gl_primitive, draw,
-    model::{create_simple_vertex, GLPrimitive},
-    shader::image_shader::ImageShader,
+    model::{
+        drawables::{screen::Screen, Drawable, DrawableType},
+        Model,
+    },
+    shader::UniformVariable,
+    utility::get_mouse_pos,
+    Mat4,
 };
-use crate::{model::image_manager::ImageManager, presenter::Presenter};
 
-#[derive(Debug)]
-struct ViewerError(String);
-
-impl Display for ViewerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ViewerError : {}", self.0)
-    }
-}
-
-impl std::error::Error for ViewerError {}
+use super::{initialize, View};
 
 /// View of MVP architecture.
 pub struct Viewer {
-    sdl_context: Sdl,
-    video_subsystem: VideoSubsystem,
+    sdl_context: sdl2::Sdl,
+    video_subsystem: sdl2::VideoSubsystem,
     window: sdl2::video::Window,
     _gl_context: sdl2::video::GLContext,
-    screen_shader: ImageShader,
-    vao: Option<u32>,
-    vbo: Option<u32>,
-    vertex_num: i32,
-    output_dir: PathBuf,
+    event_pump: sdl2::EventPump,
+    screen: Screen,
 }
 
-define_gl_primitive!(Viewer);
-
 impl Viewer {
-    pub fn new(
-        sdl_context: Sdl,
-        video_subsystem: VideoSubsystem,
-        window: sdl2::video::Window,
-        gl_context: sdl2::video::GLContext,
-    ) -> Viewer {
-        let (vao, vbo, vertex_num) = create_simple_vertex();
-        let screen_shader = ImageShader::new("screen");
+    pub const VIEWER_NAME: &'static str = "default";
 
-        let viewer = Viewer {
+    pub fn new(width: u32, height: u32) -> Box<Viewer> {
+        let (sdl_context, video_subsystem, window, gl_context, event_pump) =
+            initialize(width, height);
+        Box::new(Viewer {
             sdl_context,
             video_subsystem,
             window,
             _gl_context: gl_context,
-            screen_shader,
-            vao: Some(vao),
-            vbo: Some(vbo),
-            vertex_num,
-            output_dir: Path::new(env!("CARGO_MANIFEST_DIR")).join("../outputs/screen_shots/"),
-        };
-
-        info!("OK : Init Viewer.");
-        viewer
+            event_pump,
+            screen: Screen::new(width, height),
+        })
     }
 
-    pub fn render(self, mut presenter: Presenter, mut image_manager: ImageManager) -> Result<()> {
-        let mut imgui_context = imgui::Context::create();
-        imgui_context.set_ini_filename(None);
+    pub fn change_from(from: Box<dyn View>) -> Box<Viewer> {
+        let (sdl_context, video_subsystem, window, _gl_context, event_pump) = from.get_contexts();
+        let (widht, height) = window.size();
+        Box::new(Viewer {
+            sdl_context,
+            video_subsystem,
+            window,
+            _gl_context,
+            event_pump,
+            screen: Screen::new(widht, height),
+        })
+    }
+}
 
-        let mut imgui_sdl2_context = imgui_sdl2::ImguiSdl2::new(&mut imgui_context, &self.window);
-        let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui_context, |s| {
-            self.video_subsystem.gl_get_proc_address(s) as _
-        });
+impl View for Viewer {
+    fn get_contexts(
+        self,
+    ) -> (
+        sdl2::Sdl,
+        sdl2::VideoSubsystem,
+        sdl2::video::Window,
+        sdl2::video::GLContext,
+        sdl2::EventPump,
+    ) {
+        (
+            self.sdl_context,
+            self.video_subsystem,
+            self.window,
+            self._gl_context,
+            self.event_pump,
+        )
+    }
 
-        let mut event_pump = self.sdl_context.event_pump().unwrap();
-        'running: loop {
-            for event in event_pump.poll_iter() {
-                imgui_sdl2_context.handle_event(&mut imgui_context, &event);
-                if imgui_sdl2_context.ignore_event(&event) {
-                    continue;
-                }
-                match event {
-                    Event::Quit { .. }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Escape),
-                        ..
-                    } => break 'running,
-                    _ => {
-                        let (im, _) = presenter.process_event(&event, image_manager);
-                        image_manager = im;
-                    }
-                }
+    fn get_mode_name(&self) -> &str {
+        Viewer::VIEWER_NAME
+    }
+
+    fn get_window(&self) -> &sdl2::video::Window {
+        &self.window
+    }
+
+    fn get_video_subsystem(&self) -> &sdl2::VideoSubsystem {
+        &self.video_subsystem
+    }
+
+    fn get_event_pump(&self) -> &sdl2::EventPump {
+        &self.event_pump
+    }
+
+    fn set_image_list(&mut self, _image_num: usize) {}
+
+    fn handle_event(&mut self, event: &sdl2::event::Event, model: &mut Box<dyn Model>) -> bool {
+        let (fbo_width, fbo_height) = self.window.size();
+        match event {
+            Event::MouseWheel { y, direction, .. } => {
+                let (mx, my) = get_mouse_pos();
+                let cx = mx as f32 / fbo_width as f32 * 2.0 - 1.0;
+                let cy = (fbo_height as f32 - my as f32) / fbo_height as f32 * 2.0 - 1.0;
+                // let mut scale = 1.0f32 + *y as f32 / 10.0f32;
+                // if *direction == MouseWheelDirection::Flipped {
+                //     scale = 1.0f32 / scale;
+                // }
+                model.on_mouse_wheel(cx, cy, y, direction);
+                true
             }
-            // draw image to fbo
-            let (width, height) = self.window.size();
-            image_manager = presenter.draw(width, height, image_manager);
-
-            // draw fbo to screen
-            self.draw(presenter.get_texture_id());
-
-            // draw imgui widgets
-            imgui_sdl2_context.prepare_frame(
-                imgui_context.io_mut(),
-                &self.window,
-                &event_pump.mouse_state(),
-            );
-            let ui = imgui_context.frame();
-
-            self.draw_imgui(&ui); // 情報表示のみ
-            image_manager = presenter.draw_imgui(&ui, image_manager); // event取得
-
-            imgui_sdl2_context.prepare_render(&ui, &self.window);
-            renderer.render(ui);
-
-            self.window.gl_swap_window();
-            ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-        }
-        Ok(())
-    }
-
-    fn draw(&self, texture_id: u32) {
-        let shader_id = self.screen_shader.get_shader_id();
-        let (width, height) = self.window.size();
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-
-            // gl::Enable(gl::DEPTH_TEST);
-            // gl::Disable(gl::BLEND);
-            // gl::Enable(gl::BLEND);
-            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
-            // gl::Disable(gl::CULL_FACE);
-
-            gl::Viewport(0, 0, width as i32, height as i32);
-            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-
-            gl::UseProgram(shader_id);
-
-            gl::BindTexture(gl::TEXTURE_2D, texture_id);
-            draw!(self, gl::TRIANGLES);
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+            Event::MouseButtonDown { x, y, .. } => {
+                // 左上(0, 0), 右下(width, height)の座標系を
+                // 中心(0, 0), 左上(-1.0, 1.0), 右下(1.0, -1.0)の座標系に変換する
+                let fx = *x as f32 / fbo_width as f32 * 2.0f32 - 1.0f32;
+                let fy = 1.0f32 - *y as f32 / fbo_height as f32 * 2.0f32;
+                model.on_mouse_button_down(fx, fy);
+                true
+            }
+            Event::MouseButtonUp { .. } => {
+                model.on_mouse_button_up();
+                true
+            }
+            Event::MouseMotion { xrel, yrel, .. } => {
+                let dx = *xrel as f32 / fbo_width as f32 * 2.0f32;
+                let dy = -*yrel as f32 / fbo_height as f32 * 2.0f32;
+                model.on_mouse_motion_event(dx, dy);
+                true
+            }
+            _ => false,
         }
     }
 
-    fn draw_imgui(&self, ui: &imgui::Ui) {
-        ui.main_menu_bar(|| {
-            ui.menu(&im_str!("file"), true, || {
-                if imgui::MenuItem::new(&im_str!("ScreenShot")).build(ui) {
-                    println!("start save screenshot");
-                    match self.save_screen() {
-                        Ok(path) => {
-                            info!(
-                                "Success to save screen. Output to {}",
-                                path.to_str().unwrap()
-                            );
-                        }
-                        Err(_) => {
-                            info!("Failed to save screen.");
+    fn draw_imgui(&mut self, ui: &imgui::Ui, model: &mut Box<dyn Model>) {
+        imgui::Window::new(im_str!("Mode parameters"))
+            .size([300.0, 450.0], imgui::Condition::FirstUseEver)
+            .position([400.0, 10.0], imgui::Condition::FirstUseEver)
+            .build(&ui, || {
+                ui.text(im_str!("Image parameter"));
+                ui.separator();
+                let new_img_idx: Option<usize> = None;
+                for (idx, image) in model
+                    .get_mut_drawables()
+                    .iter()
+                    .filter(|s| s.get_drawable_type() == DrawableType::Image)
+                    .enumerate()
+                {
+                    let mut flag = image.is_draw();
+                    if ui.radio_button(&im_str!("image {}", idx), &mut flag, true) {
+                        image.set_is_draw(flag);
+                    }
+                }
+                if let Some(idx) = new_img_idx {
+                    for (i, image) in model
+                        .get_mut_drawables()
+                        .iter()
+                        .filter(|s| s.get_drawable_type() == DrawableType::Image)
+                        .enumerate()
+                    {
+                        if i != idx {
+                            image.set_is_draw(false);
                         }
                     }
                 }
-            })
-        });
-        imgui::Window::new(im_str!("Information"))
-            .size([300.0, 450.0], imgui::Condition::FirstUseEver)
-            .position([10.0, 10.0], imgui::Condition::FirstUseEver)
-            .build(&ui, || {
-                ui.text(im_str!("Viewer ver1.0"));
-                ui.separator();
-                ui.text(im_str!("FPS : {:.1}", ui.io().framerate));
-                let display_size = ui.io().display_size;
-                ui.text(format!(
-                    "Display Size: ({:.1}, {:.1})",
-                    display_size[0], display_size[1]
-                ));
-                let mouse_pos = ui.io().mouse_pos;
-                ui.text(format!(
-                    "Mouse Positioin : ({:.1}, {:.1})",
-                    mouse_pos[0], mouse_pos[1]
-                ));
                 ui.separator();
             });
     }
 
-    fn save_screen(&self) -> Result<PathBuf> {
+    /// 描画先をframe bufferに設定する
+    fn prepare_framebuffer(&mut self) {
         let (width, height) = self.window.size();
-        let data: Vec<u8> = vec![0; (width * height * 4) as usize];
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-            gl::ReadPixels(
-                0,
-                0,
-                width as i32,
-                height as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                data.as_ptr() as *mut c_void,
-            );
-        }
+        self.screen.prepare(width, height);
+    }
 
-        if !self.output_dir.exists() {
-            fs::create_dir_all(self.output_dir.as_path())?;
-        }
-        let mut idx = 0;
-        while self.output_dir.join(format!("{:05}.png", idx)).exists() {
-            idx += 1;
-        }
-        let output_path = self.output_dir.join(format!("{:05}.png", idx));
-
-        image::imageops::flip_vertical(&image::RgbaImage::from_raw(width, height, data).unwrap())
-            .save(output_path.as_path())?;
-        Ok(output_path)
+    /// frame bufferに画像を描画し、frame bufferを内容を画面に反映する
+    fn draw(&self, model: &mut Box<dyn Model>) {
+        let view_mat = UniformVariable::new("dummy", Mat4::one());
+        let proj_mat = UniformVariable::new("dummy", Mat4::one());
+        model.draw();
+        self.screen.draw(&view_mat, &proj_mat);
     }
 }

@@ -1,3 +1,6 @@
 /target
 /data/
 .ipynb_checkpoints
+*.svg
+perf.data*
+/outputs/

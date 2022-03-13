@@ -5,17 +5,14 @@ use std::{fs::File, path::Path};
 use anyhow::Result;
 use cgmath::{Array, Matrix, Vector4};
 use gl::types::*;
-use sdl2::mouse::MouseWheelDirection;
 
-use crate::Mat4;
+use crate::Matrix4;
 
-pub mod arrow_shader;
+pub mod arrow_line_shader;
 pub mod image_shader;
-pub mod line_shader;
 pub mod point_shader;
-pub mod screen_shader;
+pub mod relation_line_shader;
 
-#[derive(Clone)]
 pub struct UniformVariable<T> {
     pub name: CString, // uniform variable name in glsl program.
     pub value: T,
@@ -28,46 +25,6 @@ impl<T> UniformVariable<T> {
             value,
         }
     }
-}
-
-/// OpenGLのShaderとのInterface
-pub trait Shader {
-    /// get (glsl) program id of the shader. Used as a parameter for gl::UseProgram().
-    fn get_id(&self) -> u32;
-    /// get model matrix of the shader.
-    fn get_model_mat(&self) -> &UniformVariable<Mat4>;
-    /// set (pass to glsl) uniform variables to be used in the shader.
-    fn set_uniform_variables(
-        &self,
-        view_mat: &UniformVariable<Mat4>,
-        proj_mat: &UniformVariable<Mat4>,
-    ) {
-        let id = self.get_id();
-        unsafe {
-            gl::UseProgram(id);
-            set_mat4(id, self.get_model_mat());
-            set_mat4(id, view_mat);
-            set_mat4(id, proj_mat);
-        }
-    }
-    /// draw imgui widgets for parameter tune.
-    fn draw_imgui(&mut self, _ui: &imgui::Ui) {}
-    /// callback of mouse wheel event.
-    /// * cx : x coordinate of the mouse position. value is from -1.0 (left) to 1.0 (right)
-    /// * cy : y coordinate of the mouse position. value is from -1.0 (bottom) to 1.0 (top)
-    /// * y : the amount scrolled vertically, positive away from the user and negative towards the user
-    /// * direction : SDL_MOUSEWHEEL_NORMAL or SDL_MOUSEWHEEL_FLIPPED
-    fn on_mouse_wheel(&mut self, _cx: f32, _cy: f32, _y: &i32, _direction: &MouseWheelDirection) {}
-    /// callback of mouse motion event.
-    /// * xrel : relative motion in the X direction. positive to right, negative to left.
-    /// * yrel : relative motion in the Y direction. positive to top, negative to bottom.
-    fn on_mouse_motion_event(&mut self, _xrel: f32, _yrel: f32) {}
-    /// callback of mouse button down.
-    /// * fx : x coordinate of the mouse position. value is from -1.0 (left) to 1.0 (right)
-    /// * fy : y coordinate of the mouse position. value is from -1.0 (bottom) to 1.0 (top)
-    fn on_mouse_button_down(&mut self, _fx: f32, _fy: f32) {}
-    /// callback of mouse botton up.
-    fn on_mouse_button_up(&mut self) {}
 }
 
 /// shaderをcompileする.
@@ -176,7 +133,7 @@ unsafe fn set_vec4(shader_id: u32, u_var: &UniformVariable<Vector4<f32>>) {
     );
 }
 
-unsafe fn set_mat4(shader_id: u32, u_var: &UniformVariable<Mat4>) {
+unsafe fn set_mat4(shader_id: u32, u_var: &UniformVariable<Matrix4>) {
     gl::UniformMatrix4fv(
         gl::GetUniformLocation(shader_id, u_var.name.as_ptr()),
         1,
@@ -185,7 +142,7 @@ unsafe fn set_mat4(shader_id: u32, u_var: &UniformVariable<Mat4>) {
     );
 }
 
-unsafe fn set_mat4_array(shader_id: u32, u_var: &UniformVariable<Vec<Mat4>>) {
+unsafe fn set_mat4_array(shader_id: u32, u_var: &UniformVariable<Vec<Matrix4>>) {
     gl::UniformMatrix4fv(
         gl::GetUniformLocation(shader_id, u_var.name.as_ptr()),
         u_var.value.len() as i32,

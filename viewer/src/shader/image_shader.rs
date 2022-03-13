@@ -1,51 +1,34 @@
 use cgmath::One;
-use gl;
+use sdl2::mouse::MouseWheelDirection;
 
-use std::ffi::CString;
-use std::str;
+use crate::{utility::scale_matrix, Mat4};
 
-use crate::{utility::scale_matrix, Matrix4};
+use super::{compile_shader, Shader, UniformVariable};
 
-use super::{compile_shader, set_mat4, UniformVariable};
+const SHADER_STEM_NAME: &str = "image";
 
+/// 画像表示用のshader. model::drawables::Imageで使用される
 pub struct ImageShader {
-    pub id: u32,
-    pub model_mat: UniformVariable<Matrix4>,
-    pub view_mat: UniformVariable<Matrix4>,
-    pub projection_mat: UniformVariable<Matrix4>,
-    pub is_dragging: bool, // 画像をdrag中かどうか
+    id: u32,
+    model_mat: UniformVariable<Mat4>,
+    is_dragging: bool, // 画像をdrag中かどうか
 }
 
 impl ImageShader {
-    pub fn new(shader_path_stem: &str) -> Self {
-        let id = compile_shader(shader_path_stem);
-        let model_mat = UniformVariable {
-            name: CString::new("uModel").unwrap(),
-            value: Matrix4::one(),
-        };
-        let view_mat = UniformVariable {
-            name: CString::new("uView").unwrap(),
-            value: Matrix4::one(),
-        };
-        let projection_mat = UniformVariable {
-            name: CString::new("uProjection").unwrap(),
-            value: Matrix4::one(),
-        };
+    /// Constructor.
+    /// Compile fragment shader (./glsl/image.fs) and vertex shader (./glsl/image.vs).
+    pub fn new() -> Self {
+        let id = compile_shader(SHADER_STEM_NAME);
+        let model_mat = UniformVariable::new("uModel", Mat4::one());
         ImageShader {
             id,
             model_mat,
-            view_mat,
-            projection_mat,
             is_dragging: false,
         }
     }
 
-    pub fn change_shader_program(&mut self, shader_path_stem: &str) {
-        self.id = compile_shader(shader_path_stem);
-    }
-
-    /// 元画像のaspect ratioが保存されるようにmodel matrixを調整する
-    pub fn adjust_aspect_ratio(
+    /// Adjust model matrix so that aspect ratio of the original image is preserved.
+    fn adjust_aspect_ratio(
         &mut self,
         image_width: u32,
         image_height: u32,
@@ -63,46 +46,42 @@ impl ImageShader {
             }
         }
     }
+}
 
-    pub fn on_mouse_wheel(&mut self, cx: f32, cy: f32, scale: f32) {
+impl Shader for ImageShader {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+    fn get_model_mat(&self) -> &UniformVariable<Mat4> {
+        &self.model_mat
+    }
+
+    fn on_mouse_wheel(&mut self, cx: f32, cy: f32, y: &i32, direction: &MouseWheelDirection) {
+        let mut scale = 1.0f32 + *y as f32 / 10.0f32;
+        if *direction == MouseWheelDirection::Flipped {
+            scale = 1.0f32 / scale;
+        }
         self.model_mat.value = scale_matrix(&self.model_mat.value, cx, cy, scale);
     }
 
-    ///
-    pub fn on_mouse_motion_event(&mut self, xrel: f32, yrel: f32) {
+    /// If `is_dragging` is true, move image from (x, y) to (x + `xrel`, y + `yrel`)
+    fn on_mouse_motion_event(&mut self, xrel: f32, yrel: f32) {
         if self.is_dragging {
             self.model_mat.value[3][0] += xrel;
             self.model_mat.value[3][1] += yrel;
         }
     }
 
-    /// mouseが画像をクリックしたか判定する
-    pub fn on_mouse_button_down(
-        &mut self,
-        x: f32, // -1.0 to 1.0
-        y: f32, // -1.0 to 1.0
-    ) {
+    /// If mouse position is on the image, set `is_dragging` to true.
+    fn on_mouse_button_down(&mut self, x: f32, y: f32) {
         let nx = x - self.model_mat.value[3][0];
         let ny = y - self.model_mat.value[3][1];
         self.is_dragging =
             (nx.abs() <= self.model_mat.value[0][0]) && (ny.abs() <= self.model_mat.value[1][1]);
     }
 
-    pub fn on_mouse_button_up(&mut self) {
+    /// Set `is_dragging` to false.
+    fn on_mouse_button_up(&mut self) {
         self.is_dragging = false;
-    }
-
-    /// glslのuniform変数をセットする
-    pub fn set_uniform_variables(&self) {
-        unsafe {
-            gl::UseProgram(self.id);
-            set_mat4(self.id, &self.model_mat);
-            set_mat4(self.id, &self.view_mat);
-            set_mat4(self.id, &self.projection_mat);
-        }
-    }
-
-    pub fn get_shader_id(&self) -> u32 {
-        self.id
     }
 }

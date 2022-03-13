@@ -106,3 +106,15 @@ impl PresenterMode for DefaultPresenterMode {
         image_manager
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let default = DefaultPresenterMode::new();
+        assert_eq!(default.current_image_key, "");
+        assert_eq!(default.get_mode_name(), "default");
+    }
+}
