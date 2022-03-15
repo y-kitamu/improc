@@ -20,7 +20,7 @@ pub mod test_util {
         }
         true_vec.iter().zip(pvec.iter()).for_each(|(tval, pval)| {
             assert!(
-                (tval - pval).abs() < 1e-5,
+                (tval - pval).abs() < threshold,
                 "tval = {:?}, pval = {:?}",
                 tval,
                 pval

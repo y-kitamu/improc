@@ -17,24 +17,34 @@ pub fn least_square_fitting(data: &[na::Point2<f64>], scale: f64) -> Result<na::
         data.len() >= 5,
         format!("Data point must be 5 or more, not {}", data.len())
     );
+    let weight: na::DVector<f64> =
+        na::DVector::<f64>::from_iterator(data.len(), (0..data.len()).map(|_| 1.0));
+    least_square_fitting_with_weight(data, scale, weight.as_slice())
+}
 
-    let mat: na::Matrix6<f64> = data
-        .iter()
-        .fold(na::Matrix6::<f64>::zeros(), |mut acc, pt| {
-            let x = pt[0];
-            let y = pt[1];
-            let xi = na::Vector6::new(
-                x * x,
-                2.0 * x * y,
-                y * y,
-                2.0 * scale * x,
-                2.0 * scale * y,
-                scale * scale,
-            );
-            acc += xi * xi.transpose();
-            acc
-        })
-        / data.len() as f64;
+pub fn least_square_fitting_with_weight(
+    data: &[na::Point2<f64>],
+    scale: f64,
+    weight: &[f64],
+) -> Result<na::DVector<f64>> {
+    let mat: na::Matrix6<f64> =
+        data.iter()
+            .zip(weight.iter())
+            .fold(na::Matrix6::<f64>::zeros(), |mut acc, (pt, w)| {
+                let x = pt[0];
+                let y = pt[1];
+                let xi = na::Vector6::new(
+                    x * x,
+                    2.0 * x * y,
+                    y * y,
+                    2.0 * scale * x,
+                    2.0 * scale * y,
+                    scale * scale,
+                );
+                acc += *w * xi * xi.transpose();
+                acc
+            })
+            / data.len() as f64;
     homo_lstsq(&na::DMatrix::from_row_slice(6, 6, mat.data.as_slice()))
 }
 
@@ -93,7 +103,7 @@ mod tests {
             assert!(val.abs() < 1e-7, "val = {}", val);
         });
 
-        let mut params = least_square_fitting(&points, 1.0).unwrap();
+        let params = least_square_fitting(&points, 1.0).unwrap();
         compare_vecs_without_sign(&ans, params.as_slice(), 1e-5);
     }
 
@@ -124,7 +134,7 @@ mod tests {
             assert!(val.abs() < 1e-7, "val = {}", val);
         });
 
-        let mut params = least_square_fitting(&points, 1.0).unwrap();
+        let params = least_square_fitting(&points, 1.0).unwrap();
         compare_vecs_without_sign(&ans, params.as_slice(), 1e-5);
     }
 }
