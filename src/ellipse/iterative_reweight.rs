@@ -13,6 +13,9 @@ pub fn iterative_reweight(
     let mut previous: na::DVector<f64> =
         na::DVector::<f64>::from_iterator(params.len(), (0..params.len()).map(|_| 0.0));
     for _ in 1..max_iterate {
+        if previous[0] * params[0] < 0.0 {
+            previous *= -1.0;
+        }
         if (params.clone() - previous).norm() < threshold {
             break;
         }
