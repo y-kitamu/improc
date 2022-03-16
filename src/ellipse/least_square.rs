@@ -2,13 +2,75 @@
 use anyhow::{ensure, Context, Result};
 use nalgebra as na;
 
-/// calculate least square solution of homogeneous equations.
+/// calculate least square solution of eigenvalue problem.
 /// Minimize |Ax| subject to |x| = 1.
-pub fn homo_lstsq(matrix: &na::DMatrix<f64>) -> Result<na::DVector<f64>> {
+pub fn lstsq(matrix: &na::DMatrix<f64>) -> Result<na::DVector<f64>> {
     let svd = matrix.clone().svd(false, true);
     let v_t: na::DMatrix<f64> = svd.v_t.context("Failed to get SVD value")?;
     let (row, _) = svd.singular_values.argmin();
     Ok(v_t.row(row).transpose().clone_owned())
+}
+
+/// calculate least square solution of a generalized eigenvalue problem.
+/// Minimize |Ax| subject to |Cx| = 1.
+pub fn constrained_lstsq(
+    matrix: &na::DMatrix<f64>,
+    constrained: &na::DMatrix<f64>,
+) -> Result<na::DVector<f64>> {
+    ensure!(
+        matrix.ncols() != constrained.ncols(),
+        "Invalid matrix size."
+    );
+    let svd = constrained.clone().svd(false, true);
+    let sing_vals = svd.singular_values;
+    let v_t: na::DMatrix<f64> = svd.v_t.context("Failed to get SVD value")?;
+    // A' = A * V^T
+    let a_hat = matrix * v_t.transpose();
+    // A' columns where corresponding singular value is not 0.
+    let mut a_hat1_vec: Vec<na::DVector<f64>> = vec![];
+    // A' columns where corresponding singular value is 0.
+    let mut a_hat2_vec: Vec<na::DVector<f64>> = vec![];
+    // Non zero singular values
+    let mut diag: Vec<f64> = vec![];
+    for i in 0..a_hat.ncols() {
+        if sing_vals[i].abs() < 1e-5 {
+            a_hat2_vec.push(a_hat.column(i).clone_owned());
+        } else {
+            a_hat1_vec.push(a_hat.column(i).clone_owned());
+            diag.push(sing_vals[i]);
+        }
+    }
+    let d1_inv: na::DMatrix<f64> = na::Matrix::from_diagonal(&na::DVector::from_vec(
+        diag.iter().map(|val| 1.0 / val).collect(),
+    ));
+
+    let a_hat1: na::DMatrix<f64> = na::Matrix::from_columns(&a_hat1_vec);
+    let a_hat2: na::DMatrix<f64> = na::Matrix::from_columns(&a_hat2_vec);
+    let a_hat2_inv = pseudo_inverse(&a_hat2).context("Failed to calculate pseudo inverse.")?;
+    // A'' = (A'_2 * A'_2^+ - I) * A'_1 D_1^-1
+    let a_hhat = a_hat2 * a_hat2_inv.clone() - a_hat1.clone() * d1_inv.clone();
+    let x_hhat: na::DVector<f64> = lstsq(&a_hhat)?;
+    let x1_hat: na::DVector<f64> = d1_inv * x_hhat;
+    let x2_hat: na::DVector<f64> = a_hat2_inv * a_hat1 * x1_hat.clone();
+    let x_hat = na::DVector::from_iterator(
+        x1_hat.len() + x2_hat.len(),
+        x1_hat.iter().chain(x2_hat.iter()).copied(),
+    );
+    Ok(v_t.transpose() * x_hat)
+}
+
+/// Calculate pseudo inverse of a given matrix.
+pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
+    let svd = matrix.clone().svd(true, true);
+    let inv_d = na::Matrix::from_diagonal(&na::DVector::from_vec(
+        svd.singular_values
+            .iter()
+            .map(|val| if *val < 1e-5 { 0.0 } else { 1.0 / val })
+            .collect::<Vec<f64>>(),
+    ));
+    Ok(svd.v_t.context("Failed to get SVD value")?.transpose()
+        * inv_d
+        * svd.u.context("Failed to get SVD value")?)
 }
 
 /// Fit given `data` points to ellipse by least square method.
@@ -45,7 +107,7 @@ pub fn least_square_fitting_with_weight(
                 acc
             })
             / data.len() as f64;
-    homo_lstsq(&na::DMatrix::from_row_slice(6, 6, mat.data.as_slice()))
+    lstsq(&na::DMatrix::from_row_slice(6, 6, mat.data.as_slice()))
 }
 
 /// Calculate residual for a given point (`pt`).
