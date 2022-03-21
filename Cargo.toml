@@ -38,6 +38,10 @@ harness = false
 name = "affine_transform"
 harness = false
 
+[[example]]
+name = "least_square"
+path = "examples/ellipse/least_square_sample.rs"
+
 # [[example]]
 # name = "fast_detect"
 # path = "examples/feat/fast_detect.rs"

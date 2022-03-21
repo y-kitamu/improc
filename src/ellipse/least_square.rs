@@ -88,25 +88,32 @@ pub fn least_square_fitting_with_weight(
     scale: f64,
     weight: &[f64],
 ) -> Result<na::DVector<f64>> {
-    let mat: na::Matrix6<f64> =
-        data.iter()
-            .zip(weight.iter())
-            .fold(na::Matrix6::<f64>::zeros(), |mut acc, (pt, w)| {
-                let x = pt[0];
-                let y = pt[1];
-                let xi = na::Vector6::new(
-                    x * x,
-                    2.0 * x * y,
-                    y * y,
-                    2.0 * scale * x,
-                    2.0 * scale * y,
-                    scale * scale,
-                );
-                acc += *w * xi * xi.transpose();
-                acc
-            })
-            / data.len() as f64;
-    lstsq(&na::DMatrix::from_row_slice(6, 6, mat.data.as_slice()))
+    let mat: na::Matrix6<f64> = calc_ellipse_data_mat(data, scale, weight);
+    lstsq(&na::DMatrix::from_column_slice(6, 6, mat.data.as_slice()))
+}
+
+pub fn calc_ellipse_data_mat(
+    data: &[na::Point2<f64>],
+    scale: f64,
+    weight: &[f64],
+) -> na::Matrix6<f64> {
+    data.iter()
+        .zip(weight.iter())
+        .fold(na::Matrix6::<f64>::zeros(), |mut acc, (pt, w)| {
+            let x = pt[0];
+            let y = pt[1];
+            let xi = na::Vector6::new(
+                x * x,
+                2.0 * x * y,
+                y * y,
+                2.0 * scale * x,
+                2.0 * scale * y,
+                scale * scale,
+            );
+            acc += *w * xi * xi.transpose();
+            acc
+        })
+        / data.len() as f64
 }
 
 /// Calculate residual for a given point (`pt`).
