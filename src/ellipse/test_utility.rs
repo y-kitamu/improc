@@ -45,7 +45,17 @@ pub mod test_util {
         assert_eq!(true_mat.ncols(), pred_mat.ncols());
 
         (0..true_mat.nrows()).for_each(|r| {
-            (0..pred_mat.nrows()).for_each(|c| assert_eq_float!(true_mat[(r, c)], pred_mat[(r, c)]))
+            (0..true_mat.nrows()).for_each(|c| assert_eq_float!(true_mat[(r, c)], pred_mat[(r, c)]))
         });
+    }
+
+    ///
+    pub fn compare_vector(true_vec: &na::DVector<f64>, pred_vec: &na::DVector<f64>) {
+        assert_eq!(true_vec.nrows(), pred_vec.nrows());
+        true_vec
+            .as_slice()
+            .iter()
+            .zip(pred_vec.as_slice().iter())
+            .for_each(|(lhs, rhs)| assert_eq_float!(lhs, rhs));
     }
 }

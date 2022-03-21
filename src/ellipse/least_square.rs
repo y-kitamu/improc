@@ -2,6 +2,8 @@
 use anyhow::{ensure, Context, Result};
 use nalgebra as na;
 
+use super::matrix_ops::pseudo_inverse;
+
 /// calculate least square solution of eigenvalue problem.
 /// Minimize |Ax| subject to |x| = 1.
 pub fn lstsq(matrix: &na::DMatrix<f64>) -> Result<na::DVector<f64>> {
@@ -18,7 +20,7 @@ pub fn constrained_lstsq(
     constrained: &na::DMatrix<f64>,
 ) -> Result<na::DVector<f64>> {
     ensure!(
-        matrix.ncols() != constrained.ncols(),
+        matrix.ncols() == constrained.ncols(),
         "Invalid matrix size."
     );
     let svd = constrained.clone().svd(false, true);
@@ -40,11 +42,20 @@ pub fn constrained_lstsq(
             diag.push(sing_vals[i]);
         }
     }
+    ensure!(
+        !a_hat1_vec.is_empty(),
+        "Invalid value : a_hat1_vec is empty."
+    );
     let d1_inv: na::DMatrix<f64> = na::Matrix::from_diagonal(&na::DVector::from_vec(
         diag.iter().map(|val| 1.0 / val).collect(),
     ));
-
     let a_hat1: na::DMatrix<f64> = na::Matrix::from_columns(&a_hat1_vec);
+    // If a_hat2 is empty, objective is minimizing |A_hat1 * x_hat| subject to |x_hat| = 1.
+    if a_hat2_vec.is_empty() {
+        let x_hat = lstsq(&a_hat1)?;
+        return Ok(v_t.transpose() * x_hat);
+    }
+
     let a_hat2: na::DMatrix<f64> = na::Matrix::from_columns(&a_hat2_vec);
     let a_hat2_inv = pseudo_inverse(&a_hat2).context("Failed to calculate pseudo inverse.")?;
     // A'' = (A'_2 * A'_2^+ - I) * A'_1 D_1^-1
@@ -59,20 +70,6 @@ pub fn constrained_lstsq(
     Ok(v_t.transpose() * x_hat)
 }
 
-/// Calculate pseudo inverse of a given matrix.
-pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
-    let svd = matrix.clone().svd(true, true);
-    let inv_d = na::Matrix::from_diagonal(&na::DVector::from_vec(
-        svd.singular_values
-            .iter()
-            .map(|val| if *val < 1e-5 { 0.0 } else { 1.0 / val })
-            .collect::<Vec<f64>>(),
-    ));
-    Ok(svd.v_t.context("Failed to get SVD value")?.transpose()
-        * inv_d
-        * svd.u.context("Failed to get SVD value")?)
-}
-
 /// Fit given `data` points to ellipse by least square method.
 pub fn least_square_fitting(data: &[na::Point2<f64>], scale: f64) -> Result<na::DVector<f64>> {
     ensure!(
@@ -84,6 +81,8 @@ pub fn least_square_fitting(data: &[na::Point2<f64>], scale: f64) -> Result<na::
     least_square_fitting_with_weight(data, scale, weight.as_slice())
 }
 
+/// Calculate least square fit weighting each data points by weight array.
+/// `data[i]` is weighted (multiplied) by `weight[i]`.
 pub fn least_square_fitting_with_weight(
     data: &[na::Point2<f64>],
     scale: f64,
@@ -123,7 +122,9 @@ pub fn calc_residual(pt: &na::Point2<f64>, params: &[f64]) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::ellipse::test_utility::test_util::{compare_vecs_without_sign, normalize};
+    use crate::ellipse::test_utility::test_util::{
+        compare_matrix, compare_vecs_without_sign, compare_vector, normalize,
+    };
 
     use super::*;
     use rand::prelude::*;
@@ -198,5 +199,29 @@ mod tests {
 
         let params = least_square_fitting(&points, 1.0).unwrap();
         compare_vecs_without_sign(&ans, params.as_slice(), 1e-5);
+    }
+
+    #[test]
+    fn test_constrained_lstsq() {
+        // identity matrix case (normal eigenvalue problem)
+        let matrix = na::DMatrix::<f64>::from_diagonal(&na::DVector::from_row_slice(&[
+            5.0, 4.0, 3.0, 2.0, 1.0,
+        ]));
+        let constrained = na::DMatrix::<f64>::identity(5, 5);
+        let res = constrained_lstsq(&matrix, &constrained).unwrap();
+        compare_vector(
+            &na::DVector::<f64>::from_vec(vec![0.0, 0.0, 0.0, 0.0, 1.0]),
+            &res,
+        );
+
+        //  identity matrix case (2)
+        let matrix = na::DMatrix::<f64>::from_diagonal(&na::DVector::from_row_slice(&[
+            5.0, 4.0, 3.0, 2.0, 0.0,
+        ]));
+        let res = constrained_lstsq(&matrix, &constrained).unwrap();
+        compare_vector(
+            &na::DVector::<f64>::from_vec(vec![0.0, 0.0, 0.0, 0.0, 1.0]),
+            &res,
+        );
     }
 }
