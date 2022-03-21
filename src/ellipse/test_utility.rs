@@ -1,5 +1,16 @@
 //! Test utility functions (only build with test code)
 
+/// Assert if two float values are almost same.
+#[macro_export]
+macro_rules! assert_eq_float {
+    ($lhs:expr, $rhs: expr) => {{
+        assert!(($lhs - $rhs).abs() < 1e-5);
+    }};
+    ($lhs:expr, $rhs: expr, $($args:tt)+) => {{
+        assert!(($lhs - $rhs).abs() < 1e-5, $($args)+)
+    }};
+}
+
 #[cfg(test)]
 pub mod test_util {
     use nalgebra as na;
@@ -26,5 +37,15 @@ pub mod test_util {
                 pval
             );
         })
+    }
+
+    /// Assert if two matrices `true_mat` and `pred_mat` have same elements.
+    pub fn compare_matrix(true_mat: &na::DMatrix<f64>, pred_mat: &na::DMatrix<f64>) {
+        assert_eq!(true_mat.nrows(), pred_mat.nrows());
+        assert_eq!(true_mat.ncols(), pred_mat.ncols());
+
+        (0..true_mat.nrows()).for_each(|r| {
+            (0..pred_mat.nrows()).for_each(|c| assert_eq_float!(true_mat[(r, c)], pred_mat[(r, c)]))
+        });
     }
 }
