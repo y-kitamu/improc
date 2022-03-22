@@ -49,8 +49,43 @@ pub fn calc_ellipse_data_var_mat(
 
 #[cfg(test)]
 mod tests {
+    use crate::ellipse::{
+        least_square::calc_residual,
+        test_utility::test_util::{compare_vecs_without_sign, normalize},
+    };
+
     use super::*;
 
     #[test]
-    fn test_taubin() {}
+    fn test_taubin() {
+        // x^2 + 4 * y^2 - 4 = 0
+        let ans = normalize(&[1.0, 0.0, 4.0, 0.0, 0.0, -4.0]);
+        let r45 = std::f64::consts::FRAC_PI_4;
+        let r30 = std::f64::consts::FRAC_PI_6;
+        let r60 = std::f64::consts::FRAC_PI_3;
+        let points = vec![
+            na::Point2::new(2.0, 0.0),
+            na::Point2::new(-2.0, 0.0),
+            na::Point2::new(0.0, 1.0),
+            na::Point2::new(0.0, -1.0),
+            na::Point2::new(2.0 * r45.cos(), 1.0 * r45.sin()),
+            na::Point2::new(-2.0 * r45.cos(), 1.0 * r45.sin()),
+            na::Point2::new(-2.0 * r45.cos(), -1.0 * r45.sin()),
+            na::Point2::new(2.0 * r30.cos(), 1.0 * r30.sin()),
+            na::Point2::new(-2.0 * r30.cos(), 1.0 * r30.sin()),
+            na::Point2::new(-2.0 * r30.cos(), -1.0 * r30.sin()),
+            na::Point2::new(2.0 * r60.cos(), 1.0 * r60.sin()),
+            na::Point2::new(-2.0 * r60.cos(), 1.0 * r60.sin()),
+            na::Point2::new(-2.0 * r60.cos(), -1.0 * r60.sin()),
+        ];
+        points.iter().for_each(|p| {
+            let val = calc_residual(&p, &ans);
+            assert!(val.abs() < 1e-7, "val = {}", val);
+        });
+
+        let params = taubin(&points, 1.0).unwrap();
+        let normed = normalize(params.as_slice());
+        println!("{:?}", normed);
+        compare_vecs_without_sign(&ans, &normed, 1e-5);
+    }
 }

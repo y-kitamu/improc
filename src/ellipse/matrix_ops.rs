@@ -2,6 +2,10 @@
 use anyhow::{Context, Result};
 use nalgebra as na;
 
+pub fn get_identity_mat(size: usize) -> na::DMatrix<f64> {
+    na::DMatrix::from_diagonal_element(size, size, 1.0)
+}
+
 /// Calculate pseudo inverse of a given matrix.
 pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
     let svd = matrix.clone().svd(true, true);

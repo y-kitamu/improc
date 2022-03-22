@@ -1,6 +1,9 @@
 //! Functions for fitting data points to ellipse using least-square method.
 use anyhow::{ensure, Context, Result};
 use nalgebra as na;
+use num_traits::One;
+
+use crate::ellipse::matrix_ops::get_identity_mat;
 
 use super::matrix_ops::pseudo_inverse;
 
@@ -59,10 +62,11 @@ pub fn constrained_lstsq(
     let a_hat2: na::DMatrix<f64> = na::Matrix::from_columns(&a_hat2_vec);
     let a_hat2_inv = pseudo_inverse(&a_hat2).context("Failed to calculate pseudo inverse.")?;
     // A'' = (A'_2 * A'_2^+ - I) * A'_1 D_1^-1
-    let a_hhat = a_hat2 * a_hat2_inv.clone() - a_hat1.clone() * d1_inv.clone();
+    let a_hhat: na::DMatrix<f64> =
+        (a_hat2 * a_hat2_inv.clone() - get_identity_mat(6)) * a_hat1.clone() * d1_inv.clone();
     let x_hhat: na::DVector<f64> = lstsq(&a_hhat)?;
     let x1_hat: na::DVector<f64> = d1_inv * x_hhat;
-    let x2_hat: na::DVector<f64> = a_hat2_inv * a_hat1 * x1_hat.clone();
+    let x2_hat: na::DVector<f64> = -a_hat2_inv * a_hat1 * x1_hat.clone();
     let x_hat = na::DVector::from_iterator(
         x1_hat.len() + x2_hat.len(),
         x1_hat.iter().chain(x2_hat.iter()).copied(),
