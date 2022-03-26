@@ -2,7 +2,9 @@ use anyhow::Result;
 use nalgebra as na;
 use num_traits::Zero;
 
-use super::least_square::{calc_ellipse_data_mat, constrained_lstsq};
+use crate::linalg::matrix::constrained_lstsq;
+
+use super::least_square::calc_ellipse_data_mat;
 
 pub fn taubin(data: &[na::Point2<f64>], scale: f64) -> Result<na::DVector<f64>> {
     let weight: Vec<f64> = (0..data.len()).map(|val| val as f64).collect();

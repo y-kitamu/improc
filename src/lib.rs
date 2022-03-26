@@ -1,7 +1,11 @@
+// independent from other module
+pub mod linalg;
+
+// depend on the other module
 pub mod ellipse;
+pub mod epipolar;
 pub mod feat;
 pub mod imgproc;
-pub mod linalg;
 pub mod slam;
 pub mod utility;
 

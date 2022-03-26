@@ -3,9 +3,9 @@ use anyhow::Result;
 use nalgebra as na;
 use num_traits::Zero;
 
-use crate::ellipse::iterative_reweight::calc_ellipse_var_mat;
+use crate::{ellipse::iterative_reweight::calc_ellipse_var_mat, linalg::matrix::lstsq};
 
-use super::least_square::{calc_ellipse_data_mat, lstsq};
+use super::least_square::calc_ellipse_data_mat;
 
 pub fn fns(
     data: &[na::Point2<f64>],
