@@ -96,7 +96,7 @@ mod tests {
             na::Point2::new(-2.0 * r60.cos(), 1.0 * r60.sin()),
             na::Point2::new(-2.0 * r60.cos(), -1.0 * r60.sin()),
         ];
-        let params = fns(&points, 1.0, 100).unwrap();
+        let params = fns(&points, 1e-5, 100).unwrap();
         compare_vecs_without_sign(&ans, params.as_slice(), 1e-5);
     }
 }
