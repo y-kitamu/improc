@@ -96,6 +96,8 @@ pub fn least_square_fitting_with_weight(
     lstsq(&na::DMatrix::from_column_slice(6, 6, mat.data.as_slice()))
 }
 
+/// Calculate 6 x 6 matrix of xi * xi^T.
+/// xi = (x^2, 2xy, y^2, 2fx, 2fy, f^2)
 pub fn calc_ellipse_data_mat(
     data: &[na::Point2<f64>],
     scale: f64,
