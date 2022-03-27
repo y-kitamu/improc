@@ -12,13 +12,15 @@ mod tests {
 
     use nalgebra as na;
     use rand::prelude::*;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_iterative_reweight() {
         // x^2 + y^2 - 1 = 0
         let ans = normalize(&[1.0, 0.0, 1.0, 0.0, 0.0, -1.0]);
         let std_dev = 0.05;
-        let mut rng = rand::thread_rng();
+        let mut rng = ChaCha20Rng::seed_from_u64(2);
         let points: Vec<na::Point2<f64>> = (0..1000)
             .map(|_| {
                 let rad: f64 = rng.gen::<f64>() * std::f64::consts::PI * 2.0;

@@ -29,10 +29,7 @@ pub fn taubin_with_weight<'a, DataClass: ObservedData<'a>>(
         let w = weights[idx];
         acc + w * 4.0 * var
     }) / data_container.len() as f64;
-    constrained_lstsq(
-        &na::DMatrix::from_column_slice(vec_size, vec_size, mat.as_slice()),
-        &na::DMatrix::from_column_slice(vec_size, vec_size, var_mat.as_slice()),
-    )
+    constrained_lstsq(&mat, &var_mat)
 }
 
 pub fn renormalization<'a, DataClass: ObservedData<'a>>(
@@ -50,9 +47,9 @@ pub fn renormalization<'a, DataClass: ObservedData<'a>>(
         if (params.clone() - previous).norm() < STOP_THRESHOLD {
             break;
         }
-        let weight = data_container.weights(&params);
+        let weights = data_container.weights(&params);
         previous = params.clone();
-        params = taubin_with_weight::<DataClass>(data, &weight)?;
+        params = taubin_with_weight::<DataClass>(data, &weights)?;
     }
     Ok(params)
 }

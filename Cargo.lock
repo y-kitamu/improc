@@ -506,6 +506,7 @@ dependencies = [
  "nalgebra",
  "num-traits",
  "rand",
+ "rand_chacha",
  "rand_distr",
  "viewer",
 ]
