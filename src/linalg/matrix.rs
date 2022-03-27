@@ -2,6 +2,8 @@
 use anyhow::{ensure, Context, Result};
 use nalgebra as na;
 
+use crate::linalg::get_identity_mat;
+
 /// calculate least square solution of eigenvalue problem.
 /// Minimize |Ax| subject to |x| = 1.
 pub fn lstsq(matrix: &na::DMatrix<f64>) -> Result<na::DVector<f64>> {
@@ -67,10 +69,6 @@ pub fn constrained_lstsq(
         x1_hat.iter().chain(x2_hat.iter()).copied(),
     );
     Ok(v_t.transpose() * x_hat)
-}
-
-pub fn get_identity_mat(size: usize) -> na::DMatrix<f64> {
-    na::DMatrix::from_diagonal_element(size, size, 1.0)
 }
 
 /// Calculate pseudo inverse of a given matrix.

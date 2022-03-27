@@ -15,6 +15,17 @@ macro_rules! assert_eq_float {
 pub mod test_util {
     use nalgebra as na;
 
+    /// Calculate residual for a given point (`pt`).
+    pub fn calc_residual(pt: &na::Point2<f64>, params: &[f64]) -> f64 {
+        let x = pt[0];
+        let y = pt[1];
+        params[0] * x * x
+            + 2.0 * params[1] * x * y
+            + params[2] * y * y
+            + 2.0 * (params[3] * x + params[4] * y)
+            + params[5]
+    }
+
     /// Normalize `vec` to |`vec`| = 1
     pub fn normalize(vec: &[f64]) -> Vec<f64> {
         let sum: f64 = vec.iter().map(|x| x * x).sum();

@@ -1,5 +1,7 @@
 // independent from other module
 pub mod linalg;
+pub mod optimizer;
+pub mod utility;
 
 // depend on the other module
 pub mod ellipse;
@@ -7,7 +9,6 @@ pub mod epipolar;
 pub mod feat;
 pub mod imgproc;
 pub mod slam;
-pub mod utility;
 
 #[macro_export]
 macro_rules! process_dynamic_image {

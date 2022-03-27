@@ -1,57 +1,16 @@
 //! Functions for fitting data points to ellipse using Iterative reweight method.
-use anyhow::Result;
-use nalgebra as na;
-
-use super::least_square::{least_square_fitting, least_square_fitting_with_weight};
-
-pub fn iterative_reweight(
-    data: &[na::Point2<f64>],
-    threshold: f64,
-    max_iterate: usize,
-) -> Result<na::DVector<f64>> {
-    let mut params = least_square_fitting(data, 1.0)?;
-    let mut previous: na::DVector<f64> =
-        na::DVector::<f64>::from_iterator(params.len(), (0..params.len()).map(|_| 0.0));
-    for _ in 1..max_iterate {
-        if previous[0] * params[0] < 0.0 {
-            previous *= -1.0;
-        }
-        if (params.clone() - previous).norm() < threshold {
-            break;
-        }
-        let weight = data
-            .iter()
-            .map(|pt| {
-                let var_mat = calc_ellipse_var_mat(pt);
-                1.0 / params.dot(&(var_mat * params.clone()))
-            })
-            .collect::<Vec<f64>>();
-        previous = params.clone();
-        params = least_square_fitting_with_weight(data, 1.0, &weight).unwrap();
-    }
-    Ok(params)
-}
-
-pub fn calc_ellipse_var_mat(pt: &na::Point2<f64>) -> na::Matrix6<f64> {
-    let x = pt[0];
-    let y = pt[1];
-    #[rustfmt::skip]
-    let var_mat = na::Matrix6::<f64>::from_column_slice(&[
-                    x * x, x * y, 0.0, x, 0.0, 0.0,
-                    x * y, x * x + y * y, x * y, y, x, 0.0,
-                    0.0, x * y, y * y, 0.0, y , 0.0,
-                    x, y, 0.0, 1.0, 0.0, 0.0,
-                    0.0, x, y, 0.0, 1.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    ]);
-    4.0 * var_mat
-}
 
 #[cfg(test)]
 mod tests {
-    use crate::ellipse::test_utility::test_util::{compare_vecs_without_sign, normalize};
+    use crate::{
+        ellipse::{
+            test_utility::test_util::{compare_vecs_without_sign, normalize},
+            EllipseData,
+        },
+        optimizer::least_square::iterative_reweight,
+    };
 
-    use super::*;
+    use nalgebra as na;
     use rand::prelude::*;
 
     #[test]
@@ -69,7 +28,7 @@ mod tests {
             })
             .collect();
 
-        let pred = iterative_reweight(&points, 1e-7, 100).unwrap();
+        let pred = iterative_reweight::<EllipseData>(&points).unwrap();
         compare_vecs_without_sign(&ans, pred.as_slice(), 1e-2);
     }
 }
