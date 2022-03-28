@@ -13,27 +13,6 @@ mod tests {
     use rand::prelude::*;
 
     #[test]
-    fn test_svd() {
-        let mat = na::Matrix2x3::<f64>::new(3.0, 1.0, 2.0, 3.0, 2.0, 1.0);
-        let svd = mat.svd(false, true);
-        let v = na::Matrix2x3::new(
-            0.0,
-            -1.0 / 2.0f64.sqrt(),
-            1.0 / 2.0f64.sqrt(),
-            2.0 / 6.0f64.sqrt(),
-            1.0 / 6.0f64.sqrt(),
-            1.0 / 6.0f64.sqrt(),
-        );
-        println!("v = {:?}", v);
-        println!("v_t = {:?}", svd.v_t.unwrap());
-        for r in 0..2 {
-            for c in 0..3 {
-                assert!((svd.v_t.unwrap()[r * 3 + c] - v[r * 3 + c]).abs() < 1e-5);
-            }
-        }
-    }
-
-    #[test]
     fn lsm_fit_circle() {
         // x^2 + y^2 - 1 = 0;
         let ans = normalize(&[1.0, 0.0, 1.0, 0.0, 0.0, -1.0]);
