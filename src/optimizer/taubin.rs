@@ -25,7 +25,7 @@ pub fn renormalization<'a, DataClass: ObservedData<'a>>(
         na::DVector::<f64>::from_iterator(params.len(), (0..params.len()).map(|_| 0.0));
     let data_container = DataClass::new(data);
     // calculate residual (for avoiding instability caused by SVD)
-    let default_matrix = data_container.matrix(&vec![1.0; data.len()]);
+    let default_matrix = data_container.matrix(&vec![1.0; data_container.len()]);
     let mut residual = &params.transpose() * &default_matrix * &params;
 
     for _ in 1..MAX_ITERATION {

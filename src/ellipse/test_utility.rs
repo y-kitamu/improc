@@ -11,6 +11,7 @@ macro_rules! assert_eq_float {
     }};
 }
 
+// TODO : move to proper place
 #[cfg(test)]
 pub mod test_util {
     use nalgebra as na;
