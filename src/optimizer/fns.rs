@@ -15,16 +15,29 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
     let data_container = DataClass::new(data);
     let mut previous = na::DVector::<f64>::from_vec(vec![0.0; data_container.vec_size()]);
     let mut params = step(&data_container, &previous)?;
+    // calculate residual (for avoiding instability caused by SVD)
+    let default_matrix = data_container.matrix(&vec![1.0; data.len()]);
+    let mut residual = &params.transpose() * &default_matrix * &params;
 
     for _ in 0..MAX_ITERATION {
         if previous[0] * params[0] < 0.0 {
-            previous *= -1.0;
+            params *= -1.0;
         }
         if (params.clone() - previous.clone()).norm() < STOP_THRESHOLD {
             break;
         }
         previous = params.clone();
-        params = step(&data_container, &params)?;
+        let updated = step(&data_container, &params)?;
+        // check whether residual is decreasing
+        {
+            let res = &updated.transpose() * &default_matrix * &updated;
+            if res > residual * 10.0 {
+                println!("Residual is not decreasing. Break iteration.");
+                break;
+            }
+            residual = res;
+        }
+        params = updated;
     }
     Ok(params)
 }

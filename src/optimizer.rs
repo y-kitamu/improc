@@ -13,6 +13,7 @@ pub trait ObservedData<'a> {
     fn matrix(&self, weight_vector: &[f64]) -> na::DMatrix<f64>;
     fn variance(&self, data_index: usize) -> na::DMatrix<f64>;
     fn weights(&self, params: &na::DVector<f64>) -> Vec<f64>;
+
     fn vec_size(&self) -> usize {
         self.vector(0).nrows()
     }

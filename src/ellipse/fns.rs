@@ -8,6 +8,8 @@ mod tests {
         optimizer::fns::fns,
     };
 
+    use rand::Rng;
+
     use nalgebra as na;
 
     #[test]
@@ -34,5 +36,29 @@ mod tests {
         ];
         let params = fns::<EllipseData>(&points).unwrap();
         compare_vecs_without_sign(&ans, params.as_slice(), 1e-5);
+    }
+
+    #[test]
+    fn test_fns2() {
+        // x^2 + y^2 - 1 = 0
+        let ans = normalize(&[1.0, 0.0, 1.0, 0.0, 0.0, -1.0]);
+        let std_dev = 0.05;
+
+        let mut rng = rand::thread_rng();
+        // let mut rng = ChaCha20Rng::seed_from_u64(2);
+        for _ in 0..100 {
+            let points: Vec<na::Point2<f64>> = (0..1000)
+                .map(|_| {
+                    let rad: f64 = rng.gen::<f64>() * std::f64::consts::PI * 2.0;
+                    let dx = (rng.gen::<f64>() - 0.5) * std_dev;
+                    let dy = (rng.gen::<f64>() - 0.5) * std_dev;
+                    na::Point2::new(rad.cos() + dx, rad.sin() + dy)
+                })
+                .collect();
+
+            let pred = fns::<EllipseData>(&points).unwrap();
+            let normed = normalize(pred.as_slice());
+            compare_vecs_without_sign(&ans, &normed, 1e-2);
+        }
     }
 }

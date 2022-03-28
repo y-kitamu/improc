@@ -35,7 +35,7 @@ pub fn constrained_lstsq(
     // Non zero singular values
     let mut diag: Vec<f64> = vec![];
     for i in 0..a_hat.ncols() {
-        if sing_vals[i].abs() < 1e-7 {
+        if sing_vals[i].abs() < 1e-15 {
             a_hat2_vec.push(a_hat.column(i).clone_owned());
         } else {
             a_hat1_vec.push(a_hat.column(i).clone_owned());
