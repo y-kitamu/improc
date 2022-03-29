@@ -19,7 +19,7 @@ nalgebra = "0.29.0"
 num-traits = "0.2.14"
 bitvec = "0.22.3"
 rand = { version = "0.8.5", features = ["getrandom"] }
-rand_distr = "0.4.2"
+rand_distr = "0.4.3"
 cgmath = "0.18.0"
 clap = "3.1.6"
 anyhow = "1.0.56"
