@@ -1,5 +1,4 @@
 //! Calculate fundamental matrix
-use anyhow::Result;
 use nalgebra as na;
 
 use crate::{linalg::get_zero_mat, optimizer::ObservedData};
@@ -153,7 +152,7 @@ mod tests {
     fn test_least_square() {
         for i in 0..10 {
             println!("Trial = {}", i);
-            let (homo, points) = create_test_data();
+            let (_, points) = create_test_data();
             let res = least_square_fitting::<FundamentalMatrixData>(&points).unwrap();
             assert_result(res, points);
         }
@@ -163,7 +162,7 @@ mod tests {
     fn test_iterative_reweight() {
         for i in 0..100 {
             println!("Trial = {}", i);
-            let (homo, points) = create_test_data();
+            let (_, points) = create_test_data();
             let res = iterative_reweight::<FundamentalMatrixData>(&points).unwrap();
             assert_result(res, points);
         }
@@ -173,7 +172,7 @@ mod tests {
     fn test_taubin() {
         for i in 0..10 {
             println!("Trial = {}", i);
-            let (homo, points) = create_test_data();
+            let (_, points) = create_test_data();
             let res = taubin::<FundamentalMatrixData>(&points).unwrap();
             assert_result(res, points);
         }
@@ -183,7 +182,7 @@ mod tests {
     fn test_renormalization() {
         for i in 0..100 {
             println!("Trial = {}", i);
-            let (homo, points) = create_test_data();
+            let (_, points) = create_test_data();
             let res = renormalization::<FundamentalMatrixData>(&points).unwrap();
             assert_result(res, points);
         }
@@ -193,7 +192,7 @@ mod tests {
     fn test_fns() {
         for i in 0..100 {
             println!("Trial = {}", i);
-            let (homo, points) = create_test_data();
+            let (_, points) = create_test_data();
             let res = fns::<FundamentalMatrixData>(&points).unwrap();
             assert_result(res, points);
         }

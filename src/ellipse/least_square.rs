@@ -68,11 +68,6 @@ mod tests {
 
     #[test]
     fn test_iterative_reweight() {
-        // x^2 + y^2 - 1 = 0
-        let ans = normalize(&[1.0, 0.0, 1.0, 0.0, 0.0, -1.0]);
-        let std_dev = 0.05;
-        let mut rng = rand::thread_rng();
-
         let std_dev = 0.05;
 
         let mut rng = rand::thread_rng();
