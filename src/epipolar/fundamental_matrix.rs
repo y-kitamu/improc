@@ -1,7 +1,11 @@
 //! Calculate fundamental matrix
+use anyhow::Result;
 use nalgebra as na;
 
-use crate::{linalg::get_zero_mat, optimizer::ObservedData};
+use crate::{
+    linalg::{get_identity_mat, get_zero_mat, matrix::pseudo_inverse},
+    optimizer::ObservedData,
+};
 
 struct FundamentalMatrixData<'a> {
     data: &'a [na::Point2<f64>],
@@ -87,6 +91,49 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
     }
 }
 
+const MAX_ITERATION: usize = 10;
+const STOP_THRESHOLD: f64 = 1e-5;
+
+/// optimal correction for fundamental matrix.
+pub fn optimal_correction(
+    data: &[na::Point2<f64>],
+    params: na::DVector<f64>,
+) -> Result<na::DVector<f64>> {
+    let data_container = FundamentalMatrixData::new(data);
+    let weights = data_container.weights(&params);
+    let pers_mat = get_identity_mat(data_container.vec_size()) - &params * params.transpose();
+    let mat =
+        (0..data_container.len()).fold(get_zero_mat(data_container.vec_size()), |acc, idx| {
+            let pers = &pers_mat * data_container.vector(idx);
+            acc + weights[idx] * &pers * pers.transpose()
+        }) / data_container.len() as f64;
+    let mut var_mat: na::DMatrix<f64> = pseudo_inverse(&mat)? / data_container.len() as f64;
+
+    let mut updated = params;
+    for _ in 0..MAX_ITERATION {
+        let cofactors = na::DVector::<f64>::from_row_slice(&[
+            updated[4] * updated[8] - updated[7] * updated[5],
+            updated[5] * updated[6] - updated[8] * updated[3],
+            updated[3] * updated[7] - updated[6] * updated[4],
+            updated[7] * updated[2] - updated[1] * updated[8],
+            updated[8] * updated[0] - updated[2] * updated[6],
+            updated[6] * updated[1] - updated[0] * updated[7],
+            updated[1] * updated[5] - updated[4] * updated[2],
+            updated[2] * updated[3] - updated[5] * updated[0],
+            updated[0] * updated[4] - updated[3] * updated[1],
+        ]);
+        updated -= (cofactors.transpose() * &updated)[(0, 0)] * &var_mat * &cofactors
+            / (3.0 * cofactors.transpose() * &var_mat * &cofactors)[(0, 0)];
+        updated = updated.normalize();
+        if (cofactors.transpose() * &updated)[(0, 0)].abs() < STOP_THRESHOLD {
+            break;
+        }
+        let pers_mat = get_identity_mat(data_container.vec_size()) - &updated * updated.transpose();
+        var_mat = &pers_mat * var_mat * &pers_mat;
+    }
+    Ok(updated)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::optimizer::{
@@ -135,11 +182,10 @@ mod tests {
             let v0 = na::Vector3::new(p0[0], p0[1], 1.0);
             let v1 = na::Vector3::new(p1[0], p1[1], 1.0);
             println!(
-                "p0 = {:?}, p1 = {:?}, res = {:.3}, {:.3}",
+                "p0 = {:?}, p1 = {:?}, residual = {:.3}",
                 p0.coords.as_slice(),
                 p1.coords.as_slice(),
                 (v0.transpose() * fund_mat * v1)[(0, 0)],
-                (v0.transpose() * fund_mat.transpose() * v1)[(0, 0)]
             );
             let res = (v0.transpose() * fund_mat * v1)[(0, 0)];
             assert!(res.abs() < 1e-3);
@@ -194,6 +240,17 @@ mod tests {
             println!("Trial = {}", i);
             let (_, points) = create_test_data();
             let res = fns::<FundamentalMatrixData>(&points).unwrap();
+            assert_result(res, points);
+        }
+    }
+
+    #[test]
+    fn test_optimal_correction() {
+        for i in 0..100 {
+            println!("Trial = {}", i);
+            let (_, points) = create_test_data();
+            let res = fns::<FundamentalMatrixData>(&points).unwrap();
+            let res = optimal_correction(&points, res).unwrap();
             assert_result(res, points);
         }
     }
