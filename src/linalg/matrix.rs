@@ -86,6 +86,11 @@ pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
         * svd.u.context("Failed to get SVD value")?.transpose())
 }
 
+///
+pub fn reordered_svd(matrix: na::DMatrix<f64>) {
+    let mut svd = matrix.svd(true, true);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ellipse::test_utility::test_util::{compare_matrix, compare_vector};
