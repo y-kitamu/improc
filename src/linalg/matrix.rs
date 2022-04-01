@@ -87,8 +87,26 @@ pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
 }
 
 ///
-pub fn reordered_svd(matrix: na::DMatrix<f64>) {
+pub fn reordered_svd(
+    matrix: na::DMatrix<f64>,
+) -> Result<(na::DMatrix<f64>, na::DVector<f64>, na::DMatrix<f64>)> {
     let mut svd = matrix.svd(true, true);
+    let singular_values = svd.singular_values.as_slice();
+    let indices: Vec<usize> = (0..singular_values.len()).collect();
+    indices.sort_by(|&lhs, &rhs| {
+        singular_values[lhs]
+            .partial_cmp(&singular_values[rhs])
+            .unwrap()
+    });
+    let diag = na::DVector::<f64>::from_iterator(
+        indices.len(),
+        indices.iter().map(|&idx| singular_values[idx]),
+    );
+    let u: na::DMatrix<f64> = svd.u.context("Failed to calc svd.")?;
+    let u = na::DMatrix::<f64>::from_fn(u.nrows(), u.ncols(), |r, c| u[(indices[r], c)]);
+    let v_t: na::DMatrix<f64> = svd.v_t.context("Failed to calc svd.")?;
+    let v = na::DMatrix::<f64>::from_fn(v_t.ncols(), v_t.nrows(), |r, c| v_t[(indices[c], r)]);
+    Ok((u, diag, v))
 }
 
 #[cfg(test)]

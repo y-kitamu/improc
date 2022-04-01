@@ -7,7 +7,7 @@ use crate::{
     optimizer::ObservedData,
 };
 
-struct FundamentalMatrixData<'a> {
+pub struct FundamentalMatrixData<'a> {
     data: &'a [na::Point2<f64>],
     scale: f64,
 }
