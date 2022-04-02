@@ -39,14 +39,14 @@ pub fn latent_variable_method(
     let data_container = FundamentalMatrixData::new(data);
 
     let (mut u, mut diag, mut v) = reordered_svd(matrix)?;
-    diag[diag.nrows() - 1] = 0.0;
-    let mut phi = (diag[0] / (diag[0] * diag[0] + diag[1] * diag[1])).acos();
+    diag[2] = 0.0;
+    let phi = (diag[0] / (diag[0] * diag[0] + diag[1] * diag[1])).acos();
     let mut matrix = &u * &diag * v.transpose();
 
     let mut j = sampson_error(&data_container, &matrix);
     let mut c = 1e-4;
 
-    for i in 0..MAX_ITERATION {
+    for _ in 0..MAX_ITERATION {
         #[rustfmt::skip]
         let f_u = na::DMatrix::from_row_slice(9, 3, &[
             0.0, matrix[(3, 1)], -matrix[(2, 1)],
@@ -126,27 +126,25 @@ pub fn latent_variable_method(
 
         // hessian matrix
         #[rustfmt::skip]
-        let h = na::DMatrix::from_row_slice(9, 9, &[
-            duu[(0, 0)], duu[(0, 1)], duu[(0, 2)], duv[(0, 0)], duv[(0, 1)], duv[(0, 2)], dup[(0, 0)], dup[(0, 1)], dup[(0, 2)],
-            duu[(1, 0)], duu[(1, 1)], duu[(1, 2)], duv[(1, 0)], duv[(1, 1)], duv[(1, 2)], dup[(1, 0)], dup[(1, 1)], dup[(1, 2)],
-            duu[(2, 0)], duu[(2, 1)], duu[(2, 2)], duv[(2, 0)], duv[(2, 1)], duv[(2, 2)], dup[(2, 0)], dup[(2, 1)], dup[(2, 2)],
-            duv[(0, 0)], duv[(1, 0)], duv[(2, 0)], dvv[(0, 0)], dvv[(0, 1)], dvv[(0, 2)], dvp[(0, 0)], dvp[(0, 1)], dvp[(0, 2)],
-            duv[(0, 1)], duv[(1, 1)], duv[(2, 1)], dvv[(1, 0)], dvv[(1, 1)], dvv[(1, 2)], dvp[(1, 0)], dvp[(1, 1)], dvp[(1, 2)],
-            duv[(0, 2)], duv[(1, 2)], duv[(2, 2)], dvv[(2, 0)], dvv[(2, 1)], dvv[(2, 2)], dvp[(2, 0)], dvp[(2, 1)], dvp[(2, 2)],
-            dup[(0, 0)], dup[(1, 0)], dup[(2, 0)], dvp[(0, 0)], dvp[(1, 0)], dvp[(2, 0)], dpp[(0, 0)], dpp[(0, 1)], dpp[(0, 2)],
-            dup[(0, 1)], dup[(1, 1)], dup[(2, 1)], dpp[(0, 1)], dpp[(1, 1)], dpp[(2, 1)], dpp[(1, 0)], dpp[(1, 1)], dpp[(1, 2)],
-            dup[(0, 2)], dup[(1, 2)], dup[(2, 2)], dpp[(0, 2)], dpp[(1, 2)], dpp[(2, 2)], dpp[(2, 0)], dpp[(2, 1)], dpp[(2, 2)],
+        let h = na::DMatrix::from_row_slice(7, 7, &[
+            duu[(0, 0)], duu[(0, 1)], duu[(0, 2)], duv[(0, 0)], duv[(0, 1)], duv[(0, 2)], dup[(0, 0)],
+            duu[(1, 0)], duu[(1, 1)], duu[(1, 2)], duv[(1, 0)], duv[(1, 1)], duv[(1, 2)], dup[(1, 0)],
+            duu[(2, 0)], duu[(2, 1)], duu[(2, 2)], duv[(2, 0)], duv[(2, 1)], duv[(2, 2)], dup[(2, 0)],
+            duv[(0, 0)], duv[(1, 0)], duv[(2, 0)], dvv[(0, 0)], dvv[(0, 1)], dvv[(0, 2)], dvp[(0, 0)],
+            duv[(0, 1)], duv[(1, 1)], duv[(2, 1)], dvv[(1, 0)], dvv[(1, 1)], dvv[(1, 2)], dvp[(1, 0)],
+            duv[(0, 2)], duv[(1, 2)], duv[(2, 2)], dvv[(2, 0)], dvv[(2, 1)], dvv[(2, 2)], dvp[(2, 0)],
+            dup[(0, 0)], dup[(1, 0)], dup[(2, 0)], dvp[(0, 0)], dvp[(1, 0)], dvp[(2, 0)], dpp[(0, 0)],
         ]);
         let dh = na::DMatrix::from_diagonal(&h.diagonal());
         #[rustfmt::skip]
         let b = - na::DVector::from_row_slice(&[
-            du[0], du[1], du[2], dv[0], dv[1], dv[2], dp[0], dp[1], dp[2]
+            du[0], du[1], du[2], dv[0], dv[1], dv[2], dp[0]
         ]);
 
-        let mut f_hat;
-        let mut u_hat;
-        let mut v_hat;
-        let mut p_hat;
+        let mut f_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
+        let mut u_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
+        let mut v_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
+        let mut p_hat = 0.0;
         for _ in 0..5 {
             let delta = (&h + c * &dh)
                 .lu()
@@ -167,6 +165,7 @@ pub fn latent_variable_method(
             if j_hat / (j_hat + j) < 2.0 {
                 break;
             }
+            j = j_hat;
             c *= 10.0;
         }
 
@@ -180,4 +179,23 @@ pub fn latent_variable_method(
         diag[1] = p_hat.sin();
     }
     Ok(matrix)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        epipolar::fundamental_matrix::tests::{assert_result, create_test_data},
+        optimizer::taubin::taubin,
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_latent_variable_method() {
+        let (_, data) = create_test_data();
+        let res = taubin::<FundamentalMatrixData>(&data).unwrap();
+        let res = latent_variable_method(&data, na::DMatrix::from_row_slice(3, 3, res.as_slice()))
+            .unwrap();
+        assert_result(na::DVector::from_fn(9, |i, _| res[(i % 3, i / 3)]), data);
+    }
 }

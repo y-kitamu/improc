@@ -43,6 +43,10 @@ harness = false
 name = "least_square"
 path = "examples/ellipse/least_square_sample.rs"
 
+[[example]]
+name = "sandbox_macro"
+path = "examples/sandbox_macro.rs"
+
 # [[example]]
 # name = "fast_detect"
 # path = "examples/feat/fast_detect.rs"

@@ -7,4 +7,9 @@
                                       :name "GDB::Run"
                                       :gdbpath "rust-gdb"
                                       :target nil
-                                      :cwd nil)))))
+                                      :cwd nil))
+               (lsp-rust-analyzer-debug-lens-extra-dap-args . (:MIMode "gdb"
+                                                               :miDebuggerPath "rust-gdb"
+                                                               :stopAtEntry t
+                                                               :externalConsole
+                                                               :json-false)))))

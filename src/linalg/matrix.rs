@@ -90,9 +90,9 @@ pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
 pub fn reordered_svd(
     matrix: na::DMatrix<f64>,
 ) -> Result<(na::DMatrix<f64>, na::DVector<f64>, na::DMatrix<f64>)> {
-    let mut svd = matrix.svd(true, true);
+    let svd = matrix.svd(true, true);
     let singular_values = svd.singular_values.as_slice();
-    let indices: Vec<usize> = (0..singular_values.len()).collect();
+    let mut indices: Vec<usize> = (0..singular_values.len()).collect();
     indices.sort_by(|&lhs, &rhs| {
         singular_values[lhs]
             .partial_cmp(&singular_values[rhs])

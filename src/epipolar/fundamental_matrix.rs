@@ -135,7 +135,7 @@ pub fn optimal_correction(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::optimizer::{
         fns::fns,
         least_square::{iterative_reweight, least_square_fitting},
@@ -145,7 +145,7 @@ mod tests {
     use super::*;
     use rand::Rng;
 
-    fn create_test_data() -> (na::Matrix3<f64>, Vec<na::Point2<f64>>) {
+    pub fn create_test_data() -> (na::Matrix3<f64>, Vec<na::Point2<f64>>) {
         let std_dev = 5.0;
 
         let mut rng = rand::thread_rng();
@@ -173,7 +173,7 @@ mod tests {
         (homo, points)
     }
 
-    fn assert_result(res: na::DVector<f64>, points: Vec<na::Point2<f64>>) {
+    pub fn assert_result(res: na::DVector<f64>, points: Vec<na::Point2<f64>>) {
         let fund_mat = na::Matrix3::from_row_slice(res.as_slice());
         let n_data = points.len() / 2;
         let res = (0..n_data).fold(0.0, |acc, idx| {
