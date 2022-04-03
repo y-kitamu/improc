@@ -2,6 +2,7 @@
 use nalgebra as na;
 
 pub mod fns;
+pub mod geometric;
 pub mod least_square;
 pub mod taubin;
 
@@ -17,4 +18,6 @@ pub trait ObservedData<'a> {
     fn vec_size(&self) -> usize {
         self.vector(0).nrows()
     }
+
+    fn get_delta_mut(&mut self) -> &mut [na::Point2<f64>];
 }

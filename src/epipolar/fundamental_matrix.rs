@@ -10,7 +10,7 @@ use crate::{
 pub struct FundamentalMatrixData<'a> {
     data: &'a [na::Point2<f64>],
     scale: f64,
-    pub delta: Vec<na::Point2<f64>>,
+    delta: Vec<na::Point2<f64>>,
 }
 
 impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
@@ -62,10 +62,12 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
 
     fn variance(&self, data_index: usize) -> na::DMatrix<f64> {
         let pt0 = self.data[data_index * 2];
+        let d0 = self.delta[data_index * 2];
         let pt1 = self.data[data_index * 2 + 1];
-        let (x0, y0) = (pt0[0], pt0[1]);
+        let d1 = self.delta[data_index * 2 + 1];
+        let (x0, y0) = (pt0[0] + d0[0], pt0[1] + d0[1]);
         let (x02, y02) = (x0 * x0, y0 * y0);
-        let (x1, y1) = (pt1[0], pt1[1]);
+        let (x1, y1) = (pt1[0] + d1[0], pt1[1] + d1[1]);
         let (x12, y12) = (x1 * x1, y1 * y1);
         let f0 = self.scale;
         let f02 = f0 * f0;
@@ -95,6 +97,10 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
                 1.0 / params.dot(&(&var_mat * params))
             })
             .collect()
+    }
+
+    fn get_delta_mut(&mut self) -> &mut [na::Point2<f64>] {
+        &mut self.delta
     }
 }
 

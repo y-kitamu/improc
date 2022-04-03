@@ -11,6 +11,7 @@ pub mod test_utility;
 struct EllipseData<'a> {
     data: &'a [na::Point2<f64>],
     scale: f64,
+    delta: Vec<na::Point2<f64>>,
 }
 
 impl<'a> ObservedData<'a> for EllipseData<'a> {
@@ -20,7 +21,11 @@ impl<'a> ObservedData<'a> for EllipseData<'a> {
         //     .fold(0.0f64, |acc, pt| acc + pt[0].abs() + pt[1].abs())
         //     / (data.len() as f64 * 2.0);
         let scale = 1.0;
-        EllipseData { data, scale }
+        EllipseData {
+            data,
+            scale,
+            delta: vec![na::Point2::new(0.0, 0.0); data.len()],
+        }
     }
 
     fn len(&self) -> usize {
@@ -78,5 +83,9 @@ impl<'a> ObservedData<'a> for EllipseData<'a> {
                 1.0 / params.dot(&(&var_mat * params))
             })
             .collect()
+    }
+
+    fn get_delta_mut(&mut self) -> &mut [na::Point2<f64>] {
+        &mut self.delta
     }
 }
