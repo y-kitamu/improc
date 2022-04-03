@@ -146,8 +146,11 @@ pub mod tests {
     use rand::Rng;
 
     pub fn create_test_data() -> (na::Matrix3<f64>, Vec<na::Point2<f64>>) {
-        let std_dev = 5.0;
+        let std_dev = 0.05;
+        create_test_data_with_params(std_dev)
+    }
 
+    pub fn create_test_data_with_params(std_dev: f64) -> (na::Matrix3<f64>, Vec<na::Point2<f64>>) {
         let mut rng = rand::thread_rng();
         let theta: f64 = rng.gen::<f64>() * std::f64::consts::PI * 2.0;
         let dx: f64 = rng.gen::<f64>();
@@ -160,12 +163,14 @@ pub mod tests {
         );
         let points: Vec<na::Point2<f64>> = (0..100)
             .map(|_| {
-                let x = (rng.gen::<f64>() - 0.5) * std_dev;
-                let y = (rng.gen::<f64>() - 0.5) * std_dev;
+                let x = (rng.gen::<f64>() - 0.5) * 5.0; // -5.0 ~ 5.0
+                let y = (rng.gen::<f64>() - 0.5) * 5.0; // -5.0 ~ 5.0
+                let dx = (rng.gen::<f64>() - 0.5) * std_dev;
+                let dy = (rng.gen::<f64>() - 0.5) * std_dev;
                 let pt1: na::Point3<f64> = homo * na::Point3::new(x, y, 1.0);
                 vec![
                     na::Point2::<f64>::new(x, y),
-                    na::Point2::<f64>::new(pt1[0], pt1[1]),
+                    na::Point2::<f64>::new(pt1[0] + dx, pt1[1] + dy),
                 ]
             })
             .flatten()
@@ -173,7 +178,7 @@ pub mod tests {
         (homo, points)
     }
 
-    pub fn assert_result(res: na::DVector<f64>, points: Vec<na::Point2<f64>>) {
+    pub fn assert_result(res: na::DVector<f64>, points: Vec<na::Point2<f64>>) -> f64 {
         let fund_mat = na::Matrix3::from_row_slice(res.as_slice());
         let n_data = points.len() / 2;
         let res = (0..n_data).fold(0.0, |acc, idx| {
@@ -181,77 +186,97 @@ pub mod tests {
             let p1 = points[idx * 2 + 1];
             let v0 = na::Vector3::new(p0[0], p0[1], 1.0);
             let v1 = na::Vector3::new(p1[0], p1[1], 1.0);
-            println!(
-                "p0 = {:?}, p1 = {:?}, residual = {:.3}",
-                p0.coords.as_slice(),
-                p1.coords.as_slice(),
-                (v0.transpose() * fund_mat * v1)[(0, 0)],
-            );
+            // println!(
+            //     "idx = {}, p0 = {:?}, p1 = {:?}, residual = {:.3}",
+            //     idx,
+            //     p0.coords.as_slice(),
+            //     p1.coords.as_slice(),
+            //     (v0.transpose() * fund_mat * v1)[(0, 0)],
+            // );
             let res = (v0.transpose() * fund_mat * v1)[(0, 0)];
-            assert!(res.abs() < 1e-3);
-            acc + res
+            acc + res.abs()
         }) / n_data as f64;
-        assert!(res.abs() < 1e-5);
+        // assert!(res.abs() < 1e-2, "res = {}", res);
+        res
     }
 
     #[test]
     fn test_least_square() {
-        for i in 0..10 {
-            println!("Trial = {}", i);
-            let (_, points) = create_test_data();
-            let res = least_square_fitting::<FundamentalMatrixData>(&points).unwrap();
-            assert_result(res, points);
-        }
+        let res: f64 = (0..10)
+            .map(|_| {
+                // println!("Trial = {}", i);
+                let (_, points) = create_test_data();
+                let res = least_square_fitting::<FundamentalMatrixData>(&points).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 10.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_iterative_reweight() {
-        for i in 0..100 {
-            println!("Trial = {}", i);
-            let (_, points) = create_test_data();
-            let res = iterative_reweight::<FundamentalMatrixData>(&points).unwrap();
-            assert_result(res, points);
-        }
+        let res: f64 = (0..100)
+            .map(|_| {
+                let (_, points) = create_test_data();
+                let res = iterative_reweight::<FundamentalMatrixData>(&points).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 100.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_taubin() {
-        for i in 0..10 {
-            println!("Trial = {}", i);
-            let (_, points) = create_test_data();
-            let res = taubin::<FundamentalMatrixData>(&points).unwrap();
-            assert_result(res, points);
-        }
+        let res: f64 = (0..100)
+            .map(|_| {
+                let (_, points) = create_test_data();
+                let res = taubin::<FundamentalMatrixData>(&points).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 100.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_renormalization() {
-        for i in 0..100 {
-            println!("Trial = {}", i);
-            let (_, points) = create_test_data();
-            let res = renormalization::<FundamentalMatrixData>(&points).unwrap();
-            assert_result(res, points);
-        }
+        let res: f64 = (0..100)
+            .map(|_| {
+                let (_, points) = create_test_data();
+                let res = renormalization::<FundamentalMatrixData>(&points).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 100.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_fns() {
-        for i in 0..100 {
-            println!("Trial = {}", i);
-            let (_, points) = create_test_data();
-            let res = fns::<FundamentalMatrixData>(&points).unwrap();
-            assert_result(res, points);
-        }
+        let res: f64 = (0..100)
+            .map(|_| {
+                let (_, points) = create_test_data();
+                let res = fns::<FundamentalMatrixData>(&points).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 100.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_optimal_correction() {
-        for i in 0..100 {
-            println!("Trial = {}", i);
-            let (_, points) = create_test_data();
-            let res = fns::<FundamentalMatrixData>(&points).unwrap();
-            let res = optimal_correction(&points, res).unwrap();
-            assert_result(res, points);
-        }
+        let res: f64 = (0..100)
+            .map(|_| {
+                let (_, points) = create_test_data();
+                let res = fns::<FundamentalMatrixData>(&points).unwrap();
+                let res = optimal_correction(&points, res).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 100.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
     }
 }

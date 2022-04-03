@@ -86,7 +86,8 @@ pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
         * svd.u.context("Failed to get SVD value")?.transpose())
 }
 
-///
+/// apply SVD decomposition to `matrix`.
+/// Rows or columns of the resulting matrices is ordered by singular value.
 pub fn reordered_svd(
     matrix: na::DMatrix<f64>,
 ) -> Result<(na::DMatrix<f64>, na::DVector<f64>, na::DMatrix<f64>)> {
@@ -94,8 +95,8 @@ pub fn reordered_svd(
     let singular_values = svd.singular_values.as_slice();
     let mut indices: Vec<usize> = (0..singular_values.len()).collect();
     indices.sort_by(|&lhs, &rhs| {
-        singular_values[lhs]
-            .partial_cmp(&singular_values[rhs])
+        singular_values[rhs]
+            .partial_cmp(&singular_values[lhs])
             .unwrap()
     });
     let diag = na::DVector::<f64>::from_iterator(
@@ -103,9 +104,9 @@ pub fn reordered_svd(
         indices.iter().map(|&idx| singular_values[idx]),
     );
     let u: na::DMatrix<f64> = svd.u.context("Failed to calc svd.")?;
-    let u = na::DMatrix::<f64>::from_fn(u.nrows(), u.ncols(), |r, c| u[(indices[r], c)]);
+    let u = na::DMatrix::<f64>::from_fn(u.nrows(), u.ncols(), |r, c| u[(r, indices[c])]);
     let v_t: na::DMatrix<f64> = svd.v_t.context("Failed to calc svd.")?;
-    let v = na::DMatrix::<f64>::from_fn(v_t.ncols(), v_t.nrows(), |r, c| v_t[(indices[c], r)]);
+    let v = na::DMatrix::<f64>::from_fn(v_t.ncols(), v_t.nrows(), |r, c| v_t[(c, indices[r])]);
     Ok((u, diag, v))
 }
 
@@ -156,5 +157,18 @@ mod tests {
             &na::DVector::<f64>::from_vec(vec![0.0, 0.0, 0.0, 0.0, 1.0]),
             &res,
         );
+    }
+
+    #[test]
+    fn test_reorder_svd() {
+        let mat =
+            na::DMatrix::from_row_slice(3, 3, &[1.0, 3.0, 2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 0.0]);
+        let (u, d, v) = reordered_svd(mat.clone()).unwrap();
+
+        let res = u * na::DMatrix::from_diagonal(&d) * v.transpose();
+        println!("{:?}", d);
+        println!("{:?}", mat);
+        println!("{:?}", res);
+        compare_matrix(&mat, &res);
     }
 }

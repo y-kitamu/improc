@@ -8,7 +8,7 @@ use crate::{
 
 use super::fundamental_matrix::FundamentalMatrixData;
 
-const MAX_ITERATION: usize = 100;
+const MAX_ITERATION: usize = 10;
 
 fn sampson_error(data_container: &FundamentalMatrixData, matrix: &na::DMatrix<f64>) -> f64 {
     let params = na::DVector::from_row_slice(&[
@@ -25,9 +25,10 @@ fn sampson_error(data_container: &FundamentalMatrixData, matrix: &na::DMatrix<f6
     (0..data_container.len()).fold(0.0, |acc, idx| {
         let xi = data_container.vector(idx);
         let var_mat = data_container.variance(idx);
-        acc + (xi.transpose() * &params)[(0, 0)].powi(2)
-            / (params.transpose() * var_mat * &params)[(0, 0)]
-    })
+        acc + ((xi.transpose() * &params)[(0, 0)].powi(2)
+            / (params.transpose() * var_mat * &params)[(0, 0)])
+            .abs()
+    }) / data_container.len() as f64
 }
 
 /// Fundamental matrix optimization.
@@ -38,38 +39,50 @@ pub fn latent_variable_method(
 ) -> Result<na::DMatrix<f64>> {
     let data_container = FundamentalMatrixData::new(data);
 
+    println!(
+        "Sampson error before rank correction : {}",
+        sampson_error(&data_container, &matrix)
+    );
+    // rank correction by svd decomposition
     let (mut u, mut diag, mut v) = reordered_svd(matrix)?;
     diag[2] = 0.0;
-    let phi = (diag[0] / (diag[0] * diag[0] + diag[1] * diag[1])).acos();
-    let mut matrix = &u * &diag * v.transpose();
+    let phi = (diag[0] / (diag[0] * diag[0] + diag[1] * diag[1]).sqrt()).acos();
+    diag[0] = phi.cos();
+    diag[1] = phi.sin();
+    let mut matrix = &u * na::DMatrix::from_diagonal(&diag) * v.transpose();
+    println!(
+        "Sampson error after SVD rank correction : {}",
+        sampson_error(&data_container, &matrix)
+    );
 
     let mut j = sampson_error(&data_container, &matrix);
     let mut c = 1e-4;
 
-    for _ in 0..MAX_ITERATION {
+    // LM optimization
+    for tmp_j in 0..MAX_ITERATION {
         #[rustfmt::skip]
         let f_u = na::DMatrix::from_row_slice(9, 3, &[
-            0.0, matrix[(3, 1)], -matrix[(2, 1)],
-            0.0, matrix[(3, 2)], -matrix[(2, 2)],
-            0.0, matrix[(3, 3)], -matrix[(2, 3)],
-            -matrix[(3, 1)], 0.0, matrix[(1, 1)],
-            -matrix[(3, 2)], 0.0, matrix[(1, 2)],
-            -matrix[(3, 3)], 0.0, matrix[(1, 3)],
-            matrix[(2, 1)], -matrix[(1, 1)], 0.0,
-            matrix[(2, 2)], -matrix[(1, 2)], 0.0,
-            matrix[(2, 3)], -matrix[(1, 3)], 0.0,
+            0.0, matrix[(2, 0)], -matrix[(1, 0)],
+            0.0, matrix[(2, 1)], -matrix[(1, 1)],
+            0.0, matrix[(2, 2)], -matrix[(1, 2)],
+            -matrix[(2, 0)], 0.0, matrix[(0, 0)],
+            -matrix[(2, 1)], 0.0, matrix[(0, 1)],
+            -matrix[(2, 2)], 0.0, matrix[(0, 2)],
+            matrix[(1, 0)], -matrix[(0, 0)], 0.0,
+            matrix[(1, 1)], -matrix[(0, 1)], 0.0,
+            matrix[(1, 2)], -matrix[(0, 2)], 0.0,
         ]);
         #[rustfmt::skip]
         let f_v = na::DMatrix::from_row_slice(9, 3, &[
-            0.0, matrix[(1, 3)], -matrix[(1, 2)],
-            -matrix[(1, 3)], 0.0, matrix[(1, 1)],
-            matrix[(1, 2)], -matrix[(1, 1)], 0.0,
-            0.0, matrix[(2, 3)], -matrix[(2, 2)],
-            -matrix[(2, 3)], 0.0, matrix[(2, 1)],
-            matrix[(2, 2)], -matrix[(2, 1)], 0.0,
-            0.0, matrix[(3, 3)], -matrix[(3, 2)],
-            -matrix[(3, 3)], 0.0, matrix[(3, 1)],
-            matrix[(3, 2)], -matrix[(3, 1)], 0.0,
+            0.0, matrix[(0, 2)], -matrix[(0, 1)],
+            -matrix[(0, 2)], 0.0, matrix[(0, 0)],
+            matrix[(0, 1)], -matrix[(0, 0)], 0.0,
+            0.0, matrix[(1, 2)], -matrix[(1, 1)],
+            -matrix[(1, 2)], 0.0, matrix[(1, 0)],
+            matrix[(1, 1)], -matrix[(1, 0)], 0.0,
+            0.0, matrix[(2, 2)], -matrix[(2, 1)],
+            -matrix[(2, 2)], 0.0, matrix[(2, 0)],
+            matrix[(2, 1)], -matrix[(2, 0)], 0.0,
         ]);
         #[rustfmt::skip]
         let t_phi = na::DVector::from_row_slice(&[
@@ -145,7 +158,7 @@ pub fn latent_variable_method(
         let mut u_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
         let mut v_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
         let mut p_hat = 0.0;
-        for _ in 0..5 {
+        for tmp_i in 0..5 {
             let delta = (&h + c * &dh)
                 .lu()
                 .solve(&b)
@@ -162,21 +175,29 @@ pub fn latent_variable_method(
                 * v_hat.transpose();
 
             let j_hat = sampson_error(&data_container, &f_hat);
-            if j_hat / (j_hat + j) < 2.0 {
+            if j_hat < j * 1.001 {
+                {
+                    println!(
+                        "i = {}, j_hat = {}, c = {}, delta = {:.3}, {:.3}, {:.3}, {:.3}, {:.3}, {:.3}, {:.3}",
+                        tmp_i, j_hat, c, delta[0], delta[1], delta[2], delta[3], delta[4], delta[5], delta[6]
+                    );
+                }
+                if (&matrix - &f_hat).lp_norm(2) < 1e-3 {
+                    println!("Finish at loop = {:}", tmp_j);
+                    return Ok(matrix);
+                }
+                j = j_hat;
+                matrix = f_hat;
+                u = u_hat;
+                v = v_hat;
+                diag[0] = p_hat.cos();
+                diag[1] = p_hat.sin();
                 break;
             }
-            j = j_hat;
+            println!("i = {}, j_hat = {}", tmp_i, j_hat);
             c *= 10.0;
         }
-
-        if (&matrix - &f_hat).lp_norm(2) < 1e-3 {
-            break;
-        }
-        matrix = f_hat;
-        u = u_hat;
-        v = v_hat;
-        diag[0] = p_hat.cos();
-        diag[1] = p_hat.sin();
+        c /= 10.0;
     }
     Ok(matrix)
 }
@@ -184,18 +205,22 @@ pub fn latent_variable_method(
 #[cfg(test)]
 mod tests {
     use crate::{
-        epipolar::fundamental_matrix::tests::{assert_result, create_test_data},
-        optimizer::taubin::taubin,
+        epipolar::fundamental_matrix::tests::{
+            assert_result, create_test_data, create_test_data_with_params,
+        },
+        optimizer::{least_square::least_square_fitting, taubin::taubin},
     };
 
     use super::*;
 
     #[test]
     fn test_latent_variable_method() {
-        let (_, data) = create_test_data();
-        let res = taubin::<FundamentalMatrixData>(&data).unwrap();
+        let (_, data) = create_test_data_with_params(0.1);
+        // let res = taubin::<FundamentalMatrixData>(&data).unwrap();
+        let res = least_square_fitting::<FundamentalMatrixData>(&data).unwrap();
         let res = latent_variable_method(&data, na::DMatrix::from_row_slice(3, 3, res.as_slice()))
             .unwrap();
-        assert_result(na::DVector::from_fn(9, |i, _| res[(i % 3, i / 3)]), data);
+        let r = assert_result(na::DVector::from_fn(9, |i, _| res[(i / 3, i % 3)]), data);
+        assert!(r < 1e-1, "res = {}", r);
     }
 }
