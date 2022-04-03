@@ -39,10 +39,10 @@ pub fn latent_variable_method(
 ) -> Result<na::DMatrix<f64>> {
     let data_container = FundamentalMatrixData::new(data);
 
-    println!(
-        "Sampson error before rank correction : {}",
-        sampson_error(&data_container, &matrix)
-    );
+    // println!(
+    //     "Sampson error before rank correction : {}",
+    //     sampson_error(&data_container, &matrix)
+    // );
     // rank correction by svd decomposition
     let (mut u, mut diag, mut v) = reordered_svd(matrix)?;
     diag[2] = 0.0;
@@ -50,10 +50,10 @@ pub fn latent_variable_method(
     diag[0] = phi.cos();
     diag[1] = phi.sin();
     let mut matrix = &u * na::DMatrix::from_diagonal(&diag) * v.transpose();
-    println!(
-        "Sampson error after SVD rank correction : {}",
-        sampson_error(&data_container, &matrix)
-    );
+    // println!(
+    //     "Sampson error after SVD rank correction : {}",
+    //     sampson_error(&data_container, &matrix)
+    // );
 
     let mut j = sampson_error(&data_container, &matrix);
     let mut c = 1e-4;
@@ -176,14 +176,7 @@ pub fn latent_variable_method(
 
             let j_hat = sampson_error(&data_container, &f_hat);
             if j_hat < j * 1.001 {
-                {
-                    println!(
-                        "i = {}, j_hat = {}, c = {}, delta = {:.3}, {:.3}, {:.3}, {:.3}, {:.3}, {:.3}, {:.3}",
-                        tmp_i, j_hat, c, delta[0], delta[1], delta[2], delta[3], delta[4], delta[5], delta[6]
-                    );
-                }
                 if (&matrix - &f_hat).lp_norm(2) < 1e-3 {
-                    println!("Finish at loop = {:}", tmp_j);
                     return Ok(matrix);
                 }
                 j = j_hat;
@@ -194,7 +187,6 @@ pub fn latent_variable_method(
                 diag[1] = p_hat.sin();
                 break;
             }
-            println!("i = {}, j_hat = {}", tmp_i, j_hat);
             c *= 10.0;
         }
         c /= 10.0;

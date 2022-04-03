@@ -216,59 +216,59 @@ pub mod tests {
 
     #[test]
     fn test_iterative_reweight() {
-        let res: f64 = (0..100)
+        let res: f64 = (0..20)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = iterative_reweight::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
             .sum::<f64>()
-            / 100.0;
+            / 20.0;
         assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_taubin() {
-        let res: f64 = (0..100)
+        let res: f64 = (0..20)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = taubin::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
             .sum::<f64>()
-            / 100.0;
+            / 20.0;
         assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_renormalization() {
-        let res: f64 = (0..100)
+        let res: f64 = (0..20)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = renormalization::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
             .sum::<f64>()
-            / 100.0;
+            / 20.0;
         assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_fns() {
-        let res: f64 = (0..100)
+        let res: f64 = (0..20)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = fns::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
             .sum::<f64>()
-            / 100.0;
+            / 20.0;
         assert!(res.abs() < 1e-2, "res = {}", res);
     }
 
     #[test]
     fn test_optimal_correction() {
-        let res: f64 = (0..100)
+        let res: f64 = (0..20)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = fns::<FundamentalMatrixData>(&points).unwrap();
@@ -276,7 +276,7 @@ pub mod tests {
                 assert_result(res, points)
             })
             .sum::<f64>()
-            / 100.0;
+            / 20.0;
         assert!(res.abs() < 1e-2, "res = {}", res);
     }
 }
