@@ -14,7 +14,7 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
 ) -> Result<na::DVector<f64>> {
     let data_container = DataClass::new(data);
     let mut previous = na::DVector::<f64>::from_vec(vec![0.0; data_container.vec_size()]);
-    let mut params = step(&data_container, &previous)?;
+    let mut params = minimize_sampson_error(&data_container, &previous)?;
     // calculate residual (for avoiding instability caused by SVD)
     let default_matrix = data_container.matrix(&vec![1.0; data.len()]);
     let mut residual = &params.transpose() * &default_matrix * &params;
@@ -27,7 +27,7 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
             break;
         }
         previous = params.clone();
-        let updated = step(&data_container, &params)?;
+        let updated = minimize_sampson_error(&data_container, &params)?;
         // check whether residual is decreasing
         {
             let res = &updated.transpose() * &default_matrix * &updated;
@@ -42,7 +42,7 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
     Ok(params)
 }
 
-fn step<'a, DataClass: ObservedData<'a>>(
+pub fn minimize_sampson_error<'a, DataClass: ObservedData<'a>>(
     data: &DataClass,
     params: &na::DVector<f64>,
 ) -> Result<na::DVector<f64>> {

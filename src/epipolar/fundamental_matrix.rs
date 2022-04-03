@@ -99,8 +99,31 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
             .collect()
     }
 
-    fn get_delta_mut(&mut self) -> &mut [na::Point2<f64>] {
-        &mut self.delta
+    fn update_delta(&mut self, params: &na::DVector<f64>) -> f64 {
+        #[rustfmt::skip]
+        let param_mat = na::Matrix2x3::new(
+            params[0], params[1], params[2],
+            params[3], params[4], params[5],
+        );
+        (0..self.len())
+            .map(|idx| {
+                let xi = self.vector(idx);
+                let var_mat = self.variance(idx);
+                let mut delta_sum = 0.0;
+                for off in 0..2 {
+                    let i = idx * 2 + off;
+                    let dxy = (xi.transpose() * params)[(0, 0)]
+                        / (params.transpose() * &var_mat * params)[(0, 0)]
+                        * param_mat
+                        * na::Vector3::new(self.data[i][0], self.data[i][1], self.scale);
+                    self.delta[i][0] += dxy[0];
+                    self.delta[i][1] += dxy[1];
+                    delta_sum += dxy.norm_squared();
+                }
+                delta_sum
+            })
+            .sum::<f64>()
+            / self.len() as f64
     }
 }
 

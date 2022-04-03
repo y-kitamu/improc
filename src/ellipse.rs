@@ -85,7 +85,25 @@ impl<'a> ObservedData<'a> for EllipseData<'a> {
             .collect()
     }
 
-    fn get_delta_mut(&mut self) -> &mut [na::Point2<f64>] {
-        &mut self.delta
+    fn update_delta(&mut self, params: &na::DVector<f64>) -> f64 {
+        #[rustfmt::skip]
+        let param_mat = na::Matrix2x3::new(
+            params[0], params[1], params[2],
+            params[3], params[4], params[5],
+        );
+        (0..self.len())
+            .map(|idx| {
+                let xi = self.vector(idx);
+                let var_mat = self.variance(idx);
+                let dxy = (xi.transpose() * params)[(0, 0)]
+                    / (params.transpose() * var_mat * params)[(0, 0)]
+                    * param_mat
+                    * na::Vector3::new(self.data[idx][0], self.data[idx][1], self.scale);
+                self.delta[idx][0] += dxy[0];
+                self.delta[idx][1] += dxy[1];
+                dxy.norm_squared()
+            })
+            .sum::<f64>()
+            / self.len() as f64
     }
 }

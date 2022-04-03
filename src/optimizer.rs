@@ -19,5 +19,5 @@ pub trait ObservedData<'a> {
         self.vector(0).nrows()
     }
 
-    fn get_delta_mut(&mut self) -> &mut [na::Point2<f64>];
+    fn update_delta(&mut self, params: &na::DVector<f64>) -> f64;
 }
