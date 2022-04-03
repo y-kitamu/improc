@@ -10,6 +10,7 @@ use crate::{
 pub struct FundamentalMatrixData<'a> {
     data: &'a [na::Point2<f64>],
     scale: f64,
+    pub delta: Vec<na::Point2<f64>>,
 }
 
 impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
@@ -20,7 +21,11 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
         //     .fold(0.0f64, |acc, pt| acc + pt[0].abs() + pt[1].abs())
         //     / (data.len() as f64 * 2.0);
         let scale = 1.0;
-        FundamentalMatrixData { data, scale }
+        FundamentalMatrixData {
+            data,
+            scale,
+            delta: vec![na::Point2::new(0.0, 0.0); data.len()],
+        }
     }
 
     fn len(&self) -> usize {
@@ -29,9 +34,11 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
 
     fn vector(&self, data_index: usize) -> na::DVector<f64> {
         let pt0 = self.data[data_index * 2];
+        let d0 = self.delta[data_index * 2];
         let pt1 = self.data[data_index * 2 + 1];
-        let (x0, y0) = (pt0[0], pt0[1]);
-        let (x1, y1) = (pt1[0], pt1[1]);
+        let d1 = self.delta[data_index * 2 + 1];
+        let (x0, y0) = (pt0[0] + d0[0], pt0[1] + d0[1]);
+        let (x1, y1) = (pt1[0] + d1[0], pt1[1] + d1[1]);
         let f0 = self.scale;
         na::DVector::<f64>::from_vec(vec![
             x0 * x1,
