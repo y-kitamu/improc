@@ -18,6 +18,5 @@ pub trait ObservedData<'a> {
     fn vec_size(&self) -> usize {
         self.vector(0).nrows()
     }
-
     fn update_delta(&mut self, params: &na::DVector<f64>) -> f64;
 }

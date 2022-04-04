@@ -174,6 +174,7 @@ pub fn optimal_correction(
 pub mod tests {
     use crate::optimizer::{
         fns::fns,
+        geometric::minimize_geometric_distance,
         least_square::{iterative_reweight, least_square_fitting},
         taubin::{renormalization, taubin},
     };
@@ -309,6 +310,19 @@ pub mod tests {
                 let (_, points) = create_test_data();
                 let res = fns::<FundamentalMatrixData>(&points).unwrap();
                 let res = optimal_correction(&points, res).unwrap();
+                assert_result(res, points)
+            })
+            .sum::<f64>()
+            / 20.0;
+        assert!(res.abs() < 1e-2, "res = {}", res);
+    }
+
+    #[test]
+    fn test_geometric() {
+        let res: f64 = (0..20)
+            .map(|_| {
+                let (_, points) = create_test_data();
+                let res = minimize_geometric_distance::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
             .sum::<f64>()

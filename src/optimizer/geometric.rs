@@ -4,7 +4,7 @@ use nalgebra as na;
 use super::{fns::minimize_sampson_error, ObservedData};
 
 const MAX_ITERATION: usize = 100;
-const STOP_THRESHOLD: f64 = 1e-7;
+const STOP_THRESHOLD: f64 = 1e-1;
 
 pub fn minimize_geometric_distance<'a, DataClass: ObservedData<'a>>(
     data: &'a [na::Point2<f64>],
@@ -17,7 +17,7 @@ pub fn minimize_geometric_distance<'a, DataClass: ObservedData<'a>>(
         params = minimize_sampson_error(&data_container, &params)?;
         let gerror = data_container.update_delta(&params);
 
-        if gerror / geo_error > 1.1 {
+        if (gerror - geo_error) / geo_error < STOP_THRESHOLD {
             break;
         }
         geo_error = gerror;
