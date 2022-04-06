@@ -8,6 +8,7 @@ pub mod ellipse;
 pub mod epipolar;
 pub mod feat;
 pub mod imgproc;
+pub mod sfm;
 pub mod slam;
 
 #[macro_export]
