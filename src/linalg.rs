@@ -29,3 +29,21 @@ pub fn get_rotation_matrix_from_omega(omega: &[f64]) -> na::DMatrix<f64> {
     ]);
     rot
 }
+
+pub fn scalar_triple_product(
+    a: &na::DVector<f64>,
+    b: &na::DVector<f64>,
+    c: &na::DVector<f64>,
+) -> f64 {
+    a.dot(&b.cross(c))
+}
+
+pub fn vector_cross_matrix(from: &na::DVector<f64>) -> na::DMatrix<f64> {
+    #[rustfmt::skip]
+    let mat = na::DMatrix::from_row_slice(3, 3, &[
+        0.0, -from[2], from[1],
+        from[2], 0.0, -from[0],
+        -from[1], from[0], 0.0,
+    ]);
+    mat
+}

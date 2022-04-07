@@ -125,6 +125,14 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
             .sum::<f64>()
             / self.len() as f64
     }
+
+    fn get_data(&self) -> Vec<na::Point2<f64>> {
+        self.data
+            .iter()
+            .zip(self.delta.iter())
+            .map(|(x, d)| na::Point2::new(x[0] + d[0], x[1] + d[1]))
+            .collect()
+    }
 }
 
 const MAX_ITERATION: usize = 10;

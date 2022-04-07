@@ -4,6 +4,12 @@ use nalgebra as na;
 
 use crate::linalg::get_identity_mat;
 
+/// calculate least square solution of linear equation.
+/// Find x which minimize |Ax - b|.
+pub fn le_lstsq(matrix: &na::DMatrix<f64>, params: &na::DVector<f64>) -> Result<na::DVector<f64>> {
+    Ok(pseudo_inverse(matrix).context("Failed to calc pseudo inverse.")? * params)
+}
+
 /// calculate least square solution of eigenvalue problem.
 /// Minimize |Ax| subject to |x| = 1.
 pub fn lstsq(matrix: &na::DMatrix<f64>) -> Result<na::DVector<f64>> {
