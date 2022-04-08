@@ -123,6 +123,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_le_lstsq() {
+        #[rustfmt::skip]
+        let mat = na::DMatrix::from_row_slice(4, 3, &[
+            3.0, 2.0, 4.0,
+            -1.0, 1.0, 1.0,
+            1.0, 1.0, -1.0,
+            1.0, 1.0, -1.0,
+        ]);
+        let b = na::DVector::from_vec(vec![28.0, 5.0, 1.0, 1.0]);
+        let ans = le_lstsq(&mat, &b).unwrap();
+        assert!((ans[0] - 2.0).abs() < 1e-5);
+        assert!((ans[1] - 3.0).abs() < 1e-5);
+        assert!((ans[2] - 4.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn test_pseudo_inverse() {
         #[rustfmt::skip]
         let mat = na::DMatrix::from_row_slice(3, 3, &[
