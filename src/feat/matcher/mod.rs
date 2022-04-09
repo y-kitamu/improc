@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::{descriptors::Descriptor, Distance};
 
 pub struct Match<T>

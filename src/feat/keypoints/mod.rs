@@ -8,6 +8,7 @@ pub mod fast;
 pub struct KeyPoint {
     loc: Point2<f32>,
     cornerness: f32,
+    #[allow(dead_code)]
     image_pyramid_level: u32,
     direction: f32,
 }

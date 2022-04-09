@@ -2,7 +2,7 @@ use anyhow::Result;
 use nalgebra as na;
 
 use crate::{
-    linalg::matrix::{le_lstsq, lstsq},
+    linalg::matrix::le_lstsq,
     optimizer::{geometric::minimize_geometric_distance_impl, ObservedData},
 };
 

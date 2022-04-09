@@ -59,7 +59,7 @@ pub fn latent_variable_method(
     let mut c = 1e-4;
 
     // LM optimization
-    for tmp_j in 0..MAX_ITERATION {
+    for _ in 0..MAX_ITERATION {
         #[rustfmt::skip]
         let f_u = na::DMatrix::from_row_slice(9, 3, &[
             0.0, matrix[(2, 0)], -matrix[(1, 0)],
@@ -154,11 +154,15 @@ pub fn latent_variable_method(
             du[0], du[1], du[2], dv[0], dv[1], dv[2], dp[0]
         ]);
 
+        #[allow(unused)]
         let mut f_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
+        #[allow(unused)]
         let mut u_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
+        #[allow(unused)]
         let mut v_hat = na::DMatrix::<f64>::from_element(0, 0, 0.0);
+        #[allow(unused)]
         let mut p_hat = 0.0;
-        for tmp_i in 0..5 {
+        for _ in 0..5 {
             let delta = (&h + c * &dh)
                 .lu()
                 .solve(&b)
@@ -197,10 +201,8 @@ pub fn latent_variable_method(
 #[cfg(test)]
 mod tests {
     use crate::{
-        epipolar::fundamental_matrix::tests::{
-            assert_result, create_test_data, create_test_data_with_params,
-        },
-        optimizer::{least_square::least_square_fitting, taubin::taubin},
+        epipolar::fundamental_matrix::tests::{assert_result, create_test_data_with_params},
+        optimizer::least_square::least_square_fitting,
     };
 
     use super::*;
