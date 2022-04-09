@@ -55,7 +55,7 @@ pub fn minimize_sampson_error<'a, DataClass: ObservedData<'a>>(
             let xi = data.vector(idx);
             let vm = data.variance(idx);
             let dot = params.dot(&xi);
-            acc + (*w) * dot * dot * vm
+            acc + (*w).powi(2) * dot * dot * vm
         })
         / data.len() as f64;
     lstsq(&na::DMatrix::<f64>::from_column_slice(
