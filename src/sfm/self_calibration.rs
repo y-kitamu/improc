@@ -1,10 +1,7 @@
 use anyhow::{ensure, Context, Result};
 use nalgebra as na;
 
-use crate::{
-    linalg::{scalar_triple_product, vector_cross_matrix},
-    PrintDebug,
-};
+use crate::linalg::{scalar_triple_product, vector_cross_matrix};
 
 /// Self-calibration from two image.
 /// `data` is observed points.
@@ -116,6 +113,7 @@ mod tests {
     use rand::Rng;
 
     use super::*;
+    use crate::PrintDebug;
 
     #[test]
     fn test_get_minimum_singular_value() {

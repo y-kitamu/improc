@@ -87,41 +87,50 @@ mod tests {
     #[test]
     fn test_optimal_correction() {
         let mut rng = rand::thread_rng();
-        let theta: f64 = rng.gen::<f64>() * std::f64::consts::PI * 2.0;
-        #[rustfmt::skip]
-        let rot = na::DMatrix::from_row_slice(3, 3, &[
-            theta.cos(), -theta.sin(), 0.0,
-            theta.sin(), theta.cos(), 0.0,
-            0.0, 0.0, 1.0
-        ]);
-        let trans_vec = na::DVector::from_vec(vec![1.0, 2.0, 3.0]);
-        let trans = vector_cross_matrix(&trans_vec);
-        let fund_mat = &trans * &rot;
 
-        let x0 = na::DVector::from_vec(vec![0.5, 0.3, 1.0]);
-        let mut x1 = &rot * &x0 + &trans_vec;
-        x1 /= x1[2];
+        (0..20).for_each(|_| {
+            let theta: f64 = rng.gen::<f64>() * std::f64::consts::PI * 2.0;
+            #[rustfmt::skip]
+            let rot = na::DMatrix::from_row_slice(3, 3, &[
+                theta.cos(), -theta.sin(), 0.0,
+                theta.sin(), theta.cos(), 0.0,
+                0.0, 0.0, 1.0
+            ]);
+            let trans_vec = na::DVector::from_vec(vec![1.0, 2.0, 3.0]);
+            let trans = vector_cross_matrix(&trans_vec);
+            let rt = &rot.transpose() * &trans_vec;
+            let fund_mat = &trans * &rot;
 
-        let scale = 0.00;
-        let data = vec![
-            na::Point2::new(
-                x0[0] + (rng.gen::<f64>() - 0.5) * scale,
-                x0[1] + (rng.gen::<f64>() - 0.5) * scale,
-            ),
-            na::Point2::new(
-                x1[0] + (rng.gen::<f64>() - 0.5) * scale,
-                x1[1] + (rng.gen::<f64>() - 0.5) * scale,
-            ),
-        ];
+            let p0 = na::DMatrix::<f64>::from_diagonal_element(3, 4, 1.0);
+            #[rustfmt::skip]
+            let p1 = na::DMatrix::<f64>::from_row_slice(3, 4, &[
+                rot[(0, 0)], rot[(1, 0)], rot[(2, 0)], -rt[0],
+                rot[(0, 1)], rot[(1, 1)], rot[(2, 1)], -rt[1],
+                rot[(0, 2)], rot[(1, 2)], rot[(2, 2)], -rt[2],
+            ]);
+            let gx = na::DVector::from_vec(vec![0.5, 0.3, 0.1, 1.0]);
+            let x0 = &p0 * &gx;
+            let x1 = &p1 * &gx;
+            let x0 = &x0 / x0[2];
+            let x1 = &x1 / x1[2];
 
-        let (r0, r1) = optimal_correction::<FundamentalMatrixData>(&fund_mat, &data).unwrap();
-        println!("x0 = {:?}", x0.as_slice());
-        println!("x1 = {:?}", x1.as_slice());
-        println!("r0 = {:?}", r0.coords.as_slice());
-        println!("r1 = {:?}", r1.coords.as_slice());
-        assert!((r0[0] - x0[0]).abs() < 1e-1);
-        assert!((r0[1] - x0[1]).abs() < 1e-1);
-        assert!((r1[0] - x1[0]).abs() < 1e-1);
-        assert!((r1[1] - x1[1]).abs() < 1e-1);
+            let scale = 0.01;
+            let data = vec![
+                na::Point2::new(
+                    x0[0] + (rng.gen::<f64>() - 0.5) * scale,
+                    x0[1] + (rng.gen::<f64>() - 0.5) * scale,
+                ),
+                na::Point2::new(
+                    x1[0] + (rng.gen::<f64>() - 0.5) * scale,
+                    x1[1] + (rng.gen::<f64>() - 0.5) * scale,
+                ),
+            ];
+
+            let (r0, r1) = optimal_correction::<FundamentalMatrixData>(&fund_mat, &data).unwrap();
+            assert!((r0[0] - x0[0]).abs() < 1e-1);
+            assert!((r0[1] - x0[1]).abs() < 1e-1);
+            assert!((r1[0] - x1[0]).abs() < 1e-1);
+            assert!((r1[1] - x1[1]).abs() < 1e-1);
+        });
     }
 }

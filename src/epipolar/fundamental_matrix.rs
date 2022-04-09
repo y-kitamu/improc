@@ -112,13 +112,15 @@ impl<'a> ObservedData<'a> for FundamentalMatrixData<'a> {
                 let mut delta_sum = 0.0;
                 for off in 0..2 {
                     let i = idx * 2 + off;
-                    let dxy = (xi.transpose() * params)[(0, 0)]
+                    self.delta[i].coords = -(xi.transpose() * params)[(0, 0)]
                         / (params.transpose() * &var_mat * params)[(0, 0)]
                         * param_mat
-                        * na::Vector3::new(self.data[i][0], self.data[i][1], self.scale);
-                    self.delta[i][0] += dxy[0];
-                    self.delta[i][1] += dxy[1];
-                    delta_sum += dxy.norm_squared();
+                        * na::Vector3::new(
+                            self.data[i][0] + self.delta[i][0],
+                            self.data[i][1] + self.delta[i][1],
+                            self.scale,
+                        );
+                    delta_sum += self.delta[i].coords.norm_squared();
                 }
                 delta_sum
             })
@@ -330,8 +332,8 @@ pub mod tests {
         let res: f64 = (0..20)
             .map(|_| {
                 let (_, points) = create_test_data();
-                let res = minimize_geometric_distance::<FundamentalMatrixData>(&points).unwrap();
-                assert_result(res, points)
+                let r = minimize_geometric_distance::<FundamentalMatrixData>(&points).unwrap();
+                assert_result(r, points)
             })
             .sum::<f64>()
             / 20.0;
