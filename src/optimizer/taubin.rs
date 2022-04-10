@@ -13,7 +13,7 @@ pub fn taubin<'a, DataClass: ObservedData<'a>>(
     data: &'a [na::Point2<f64>],
 ) -> Result<na::DVector<f64>> {
     let data_container = DataClass::new(data);
-    let weights = vec![1.0; data_container.len()];
+    let weights = vec![1.0; data_container.len() * data_container.num_equation().pow(2)];
     taubin_with_weight::<DataClass>(data, &weights)
 }
 
@@ -25,7 +25,11 @@ pub fn renormalization<'a, DataClass: ObservedData<'a>>(
         na::DVector::<f64>::from_iterator(params.len(), (0..params.len()).map(|_| 0.0));
     let data_container = DataClass::new(data);
     // calculate residual (for avoiding instability caused by SVD)
-    let default_matrix = data_container.matrix(&vec![1.0; data_container.len()]);
+    let default_matrix = data_container.matrix(&vec![
+        1.0;
+        data_container.len()
+            * data_container.num_equation().pow(2)
+    ]);
     let mut residual = &params.transpose() * &default_matrix * &params;
 
     for _ in 1..MAX_ITERATION {
@@ -58,11 +62,22 @@ fn taubin_with_weight<'a, DataClass: ObservedData<'a>>(
 ) -> Result<na::DVector<f64>> {
     let data_container = DataClass::new(data);
     let vec_size = data_container.vec_size();
+    let num_eqs = data_container.num_equation();
+    let num_eqs_square = num_eqs.pow(2);
     let mat = data_container.matrix(weights);
     let var_mat = (0..data_container.len()).fold(get_zero_mat(vec_size), |acc, idx| {
-        let var = data_container.variance(idx);
-        let w = weights[idx];
-        acc + w * 4.0 * var
+        acc + (0..num_eqs)
+            .map(|i| {
+                (0..num_eqs)
+                    .map(|j| {
+                        let k = idx * num_eqs_square + i * num_eqs + j;
+                        let var = data_container.variance(k);
+                        let w = weights[k];
+                        w * 4.0 * var
+                    })
+                    .sum::<na::DMatrix<f64>>()
+            })
+            .sum::<na::DMatrix<f64>>()
     }) / data_container.len() as f64;
     constrained_lstsq(&mat, &var_mat)
 }

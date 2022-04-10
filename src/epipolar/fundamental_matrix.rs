@@ -7,6 +7,10 @@ use crate::{
     optimizer::ObservedData,
 };
 
+/// Struct for computing fundamental matrix.
+/// - `data` is observed points in the two images. [image0_pt0, image1_pt0, image0_pt1, ....].
+/// - `delta` is offset for optimal point which is calculated in geometric error minimization.
+/// (Optimal point is at `data` + `delta`.)
 pub struct FundamentalMatrixData<'a> {
     data: &'a [na::Point2<f64>],
     scale: f64,

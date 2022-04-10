@@ -16,7 +16,11 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
     let mut previous = na::DVector::<f64>::from_vec(vec![0.0; data_container.vec_size()]);
     let mut params = minimize_sampson_error(&data_container, &previous)?;
     // calculate residual (for avoiding instability caused by SVD)
-    let default_matrix = data_container.matrix(&vec![1.0; data.len()]);
+    let default_matrix = data_container.matrix(&vec![
+        1.0;
+        data_container.len()
+            * data_container.num_equation().pow(2)
+    ]);
     let mut residual = &params.transpose() * &default_matrix * &params;
 
     for _ in 0..MAX_ITERATION {
@@ -43,21 +47,37 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
 }
 
 pub fn minimize_sampson_error<'a, DataClass: ObservedData<'a>>(
-    data: &DataClass,
+    data_container: &DataClass,
     params: &na::DVector<f64>,
 ) -> Result<na::DVector<f64>> {
-    let vec_size = data.vec_size();
-    let weights = data.weights(params);
-    let m = data.matrix(&weights);
-    let l = (0..data.len())
-        .zip(weights.iter())
-        .fold(get_zero_mat(vec_size), |acc, (idx, w)| {
-            let xi = data.vector(idx);
-            let vm = data.variance(idx);
-            let dot = params.dot(&xi);
-            acc + (*w).powi(2) * dot * dot * vm
-        })
-        / data.len() as f64;
+    let vec_size = data_container.vec_size();
+    let num_eqs = data_container.num_equation();
+    let num_eqs_square = num_eqs.pow(2);
+    let weights = data_container.weights(params);
+    let m = data_container.matrix(&weights);
+    let l = (0..data_container.len()).fold(get_zero_mat(vec_size), |acc, idx| {
+        let vs: Vec<f64> = (0..data_container.num_equation())
+            .map(|i| {
+                (0..data_container.num_equation())
+                    .map(|j| {
+                        let w = weights[idx * num_eqs_square + i * num_eqs + j];
+                        let xi = data_container.vector(idx * num_eqs + j);
+                        w * xi.dot(params)
+                    })
+                    .sum()
+            })
+            .collect();
+        acc + (0..num_eqs)
+            .map(|i| {
+                (0..num_eqs)
+                    .map(|j| {
+                        let vm = data_container.variance(idx * num_eqs_square + i * num_eqs + j);
+                        vs[i] * vs[j] * vm
+                    })
+                    .sum::<na::DMatrix<f64>>()
+            })
+            .sum::<na::DMatrix<f64>>()
+    }) / data_container.len() as f64;
     lstsq(&na::DMatrix::<f64>::from_column_slice(
         vec_size,
         vec_size,

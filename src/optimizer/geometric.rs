@@ -22,14 +22,11 @@ pub fn minimize_geometric_distance_impl<'a, DataClass: ObservedData<'a>>(
     let mut data_container = DataClass::new(data);
     let mut params = params.clone();
 
-    for i in 0..MAX_ITERATION {
+    for _ in 0..MAX_ITERATION {
         if update_params {
             params = minimize_sampson_error(&data_container, &params)?;
         }
         let gerror = data_container.update_delta(&params);
-        {
-            println!("i = {}, gerror = {}", i, gerror,);
-        }
 
         if gerror < STOP_THRESHOLD {
             break;
