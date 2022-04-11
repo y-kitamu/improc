@@ -36,8 +36,8 @@ pub fn iterative_reweight<'a, DataClass: ObservedData<'a>>(
     let mut params = least_square_fitting_with_weight::<DataClass>(data, &default_weights)?;
     let mut previous: na::DVector<f64> =
         na::DVector::<f64>::from_iterator(params.len(), (0..params.len()).map(|_| 0.0));
-    // calculate residual (for avoiding instability caused by SVD)
-    let mut residual = &params.transpose() * &data_container.matrix(&default_weights) * &params;
+    // calculate residual (for avoiding instability caused by DVD)
+    let mut residual = params.dot(&(&data_container.matrix(&default_weights) * &params));
 
     for _ in 0..MAX_ITERATION {
         if previous[0] * params[0] < 0.0 {
@@ -52,8 +52,8 @@ pub fn iterative_reweight<'a, DataClass: ObservedData<'a>>(
         let updated = lstsq(&mat)?;
         // check whether residual is decreasing
         {
-            let res = &updated.transpose() * &mat * &updated;
-            if res > residual * 10.0 {
+            let res = updated.dot(&(&mat * &updated));
+            if res > residual * 2.0 {
                 println!("Residual is not decreasing. Break iteration.");
                 break;
             }

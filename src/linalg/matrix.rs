@@ -16,6 +16,7 @@ pub fn lstsq(matrix: &na::DMatrix<f64>) -> Result<na::DVector<f64>> {
     let svd = matrix.clone().svd(false, true);
     let v_t: na::DMatrix<f64> = svd.v_t.context("Failed to get SVD value")?;
     let (row, _) = svd.singular_values.argmin();
+    // println!("singular values : {:?}", svd.singular_values.as_slice());
     Ok(v_t.row(row).transpose().clone_owned())
 }
 

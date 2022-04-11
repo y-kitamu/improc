@@ -1,7 +1,7 @@
 //! Homography matrix
 use nalgebra as na;
 
-use crate::{linalg::matrix::pseudo_inverse, optimizer::ObservedData, PrintDebug};
+use crate::{linalg::matrix::pseudo_inverse, optimizer::ObservedData};
 
 /// Struct for computing homography matrix from observed points in two images.
 /// - `data` is observed points on the two images. [image0_pt0, image1_pt0, image0_pt1, ....].
@@ -143,8 +143,16 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
 
     fn matrix(&self, weight_vector: &[f64]) -> na::DMatrix<f64> {
         let weight_vector: Vec<f64> = if weight_vector.iter().all(|val| (val - 1.0).abs() < 1e-5) {
+            let vec_size = self.vec_size();
             (0..weight_vector.len())
-                .map(|idx| if idx % 3 == 0 { 1.0 } else { 0.0 })
+                .map(|idx| {
+                    let val = idx % vec_size;
+                    if val % 3 == val / 3 {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                })
                 .collect()
         } else {
             weight_vector.to_vec()
@@ -159,8 +167,6 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
                         (0..n_eqs)
                             .map(|j| {
                                 let xi_j = self.vector(idx * n_eqs + j);
-                                println!("i = {}, j = {}", i, j);
-                                (&xi_i * xi_j.transpose()).print();
                                 let w = weight_vector[idx * n_eqs_square + i * n_eqs + j];
                                 w * &xi_i * xi_j.transpose()
                             })
@@ -221,58 +227,113 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        linalg::vector_cross_matrix, optimizer::least_square::least_square_fitting, PrintDebug,
+        optimizer::least_square::{iterative_reweight, least_square_fitting},
+        PrintDebug,
     };
 
     use super::*;
+    use anyhow::Result;
 
     use rand::Rng;
+
+    const LOOP_NUM: usize = 100;
 
     fn create_random_homography() -> na::DMatrix<f64> {
         let mut rng = rand::thread_rng();
         loop {
             let matrix = na::DMatrix::from_fn(3, 3, |_, _| rng.gen::<f64>());
-            if matrix.determinant().abs() > 1e-2 {
+            let det = matrix.determinant().abs();
+            if 0.9 < det && det < 1.1 {
                 return matrix;
             }
         }
     }
 
     fn create_random_points(homo: &na::DMatrix<f64>) -> Vec<na::Point2<f64>> {
+        create_random_points_impl(homo, 0.0)
+    }
+
+    fn create_random_points_impl(
+        homo: &na::DMatrix<f64>,
+        noise_scale: f64,
+    ) -> Vec<na::Point2<f64>> {
         let mut rng = rand::thread_rng();
 
-        (0..20)
+        (0..100)
             .map(|_| {
                 let vec0 = na::DVector::from_vec(vec![rng.gen::<f64>(), rng.gen::<f64>(), 1.0]);
                 let vec1 = homo * &vec0;
                 let vec1 = &vec1 / vec1[2];
+                let dx0 = (rng.gen::<f64>() - 0.5) * noise_scale;
+                let dy0 = (rng.gen::<f64>() - 0.5) * noise_scale;
+                let dx1 = (rng.gen::<f64>() - 0.5) * noise_scale;
+                let dy1 = (rng.gen::<f64>() - 0.5) * noise_scale;
                 vec![
-                    na::Point2::new(vec0[0], vec0[1]),
-                    na::Point2::new(vec1[0], vec1[1]),
+                    na::Point2::new(vec0[0] + dx0, vec0[1] + dy0),
+                    na::Point2::new(vec1[0] + dx1, vec1[1] + dy1),
                 ]
             })
             .flatten()
             .collect()
     }
 
-    // #[test]
-    fn test_leaset_square() {
+    fn test_template<F>(func: F) -> f64
+    where
+        F: Fn(&[na::Point2<f64>]) -> Result<na::DVector<f64>>,
+    {
+        let homo = create_random_homography().normalize();
+        let pts = create_random_points_impl(&homo, 0.005);
+
+        let res = func(&pts).unwrap().normalize();
+        let mut res = na::DMatrix::from_row_slice(3, 3, res.as_slice());
+        if res[(2, 2)] < 0.0 {
+            res *= -1.0;
+        }
+
+        // println!("GT : ");
+        // homo.print();
+        // println!("Pred : ");
+        // res.print();
+        // assert!(
+        //     (&homo - &res).norm_squared() < 1e-2,
+        //     "res = {}",
+        //     (&homo - &res).norm_squared()
+        // );
+        println!("Diff : {}", (&homo - &res).norm_squared());
+        (&homo - &res).norm_squared()
+    }
+
+    #[test]
+    fn test_simple() {
+        let homo = na::DMatrix::<f64>::from_diagonal(&na::DVector::from_vec(vec![1.0, 1.0, 1.0]))
+            .normalize();
+        let pts = create_random_points(&homo);
+        let res = least_square_fitting::<HomographyData>(&pts)
+            .unwrap()
+            .normalize();
+        let mut res = na::DMatrix::from_row_slice(3, 3, res.as_slice());
+        if res[(2, 2)] < 0.0 {
+            res *= -1.0;
+        }
+        assert!(
+            (&homo - &res).norm_squared() < 1e-5,
+            "res = {}",
+            (&homo - &res).norm_squared()
+        );
+    }
+
+    #[test]
+    fn test_least_square() {
         let homo = create_random_homography().normalize();
         let pts = create_random_points(&homo);
-
-        (0..20).for_each(|idx| {
-            let p0 = pts[idx * 2];
-            let p1 = pts[idx * 2 + 1];
-            let v0 = na::DVector::from_vec(vec![p0[0], p0[1], 1.0]);
-            let v1 = na::DVector::from_vec(vec![p1[0], p1[1], 1.0]);
-            let res = vector_cross_matrix(&v1) * &homo * &v0;
-            assert!(res.norm() < 1e-5);
-        });
 
         let res = least_square_fitting::<HomographyData>(&pts)
             .unwrap()
             .normalize();
-        let res = na::DMatrix::from_row_slice(3, 3, res.as_slice());
+        let mut res = na::DMatrix::from_row_slice(3, 3, res.as_slice());
+        if res[(2, 2)] < 0.0 {
+            res *= -1.0;
+        }
 
         println!("GT : ");
         homo.print();
@@ -284,4 +345,46 @@ mod tests {
             (&homo - &res).norm_squared()
         );
     }
+
+    #[test]
+    fn test_least_square_with_noise() {
+        let res: usize = (0..LOOP_NUM)
+            .map(|_| test_template(|pts| least_square_fitting::<HomographyData>(pts)))
+            .map(|val| if val < 1e-4 { 1 } else { 0 })
+            .sum();
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
+    }
+
+    #[test]
+    fn test_iterative_reweight() {
+        let res: usize = (0..LOOP_NUM)
+            .map(|_| test_template(|pts| iterative_reweight::<HomographyData>(pts)))
+            .map(|val| if val < 1e-4 { 1 } else { 0 })
+            .sum();
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
+    }
+
+    // #[test]
+    // fn test_taubin() {
+    //     // let res: usize = (0..LOOP_NUM)
+    //     //     .map(|_| test_template(|pts| taubin::<HomographyData>(pts)))
+    //     //     .map(|val| if val < 1e-4 { 1 } else { 0 })
+    //     //     .sum();
+    //     // assert!(
+    //     //     res as f64 > LOOP_NUM as f64 * 0.9,
+    //     //     "success : {} / {}",
+    //     //     res,
+    //     //     LOOP_NUM
+    //     // );
+    // }
 }
