@@ -227,7 +227,10 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        optimizer::least_square::{iterative_reweight, least_square_fitting},
+        optimizer::{
+            least_square::{iterative_reweight, least_square_fitting},
+            taubin::taubin,
+        },
         PrintDebug,
     };
 
@@ -374,17 +377,17 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_taubin() {
-    //     // let res: usize = (0..LOOP_NUM)
-    //     //     .map(|_| test_template(|pts| taubin::<HomographyData>(pts)))
-    //     //     .map(|val| if val < 1e-4 { 1 } else { 0 })
-    //     //     .sum();
-    //     // assert!(
-    //     //     res as f64 > LOOP_NUM as f64 * 0.9,
-    //     //     "success : {} / {}",
-    //     //     res,
-    //     //     LOOP_NUM
-    //     // );
-    // }
+    #[test]
+    fn test_taubin() {
+        let res: usize = (0..LOOP_NUM)
+            .map(|_| test_template(|pts| taubin::<HomographyData>(pts)))
+            .map(|val| if val < 1e-4 { 1 } else { 0 })
+            .sum();
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
+    }
 }

@@ -73,7 +73,7 @@ fn taubin_with_weight<'a, DataClass: ObservedData<'a>>(
                         let k = idx * num_eqs_square + i * num_eqs + j;
                         let var = data_container.variance(k);
                         let w = weights[k];
-                        w * 4.0 * var
+                        w * var
                     })
                     .sum::<na::DMatrix<f64>>()
             })
