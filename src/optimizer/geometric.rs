@@ -3,7 +3,7 @@ use nalgebra as na;
 
 use super::{fns::minimize_sampson_error, ObservedData};
 
-const MAX_ITERATION: usize = 100;
+const MAX_ITERATION: usize = 5;
 const STOP_THRESHOLD: f64 = 1e-4;
 
 pub fn minimize_geometric_distance<'a, DataClass: ObservedData<'a>>(

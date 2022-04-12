@@ -2,11 +2,14 @@
 use anyhow::Result;
 use nalgebra as na;
 
-use crate::linalg::{get_zero_mat, matrix::lstsq};
+use crate::{
+    linalg::{get_zero_mat, matrix::lstsq},
+    PrintDebug,
+};
 
 use super::ObservedData;
 
-const MAX_ITERATION: usize = 100;
+const MAX_ITERATION: usize = 5;
 const STOP_THRESHOLD: f64 = 1e-7;
 
 pub fn fns<'a, DataClass: ObservedData<'a>>(
@@ -21,7 +24,7 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
         data_container.len()
             * data_container.num_equation().pow(2)
     ]);
-    let mut residual = &params.transpose() * &default_matrix * &params;
+    let mut residual = params.dot(&(&default_matrix * &params));
 
     for _ in 0..MAX_ITERATION {
         if previous[0] * params[0] < 0.0 {
@@ -34,7 +37,7 @@ pub fn fns<'a, DataClass: ObservedData<'a>>(
         let updated = minimize_sampson_error(&data_container, &params)?;
         // check whether residual is decreasing
         {
-            let res = &updated.transpose() * &default_matrix * &updated;
+            let res = updated.dot(&(&default_matrix * &updated));
             if res > residual * 10.0 {
                 println!("Residual is not decreasing. Break iteration.");
                 break;
@@ -77,10 +80,10 @@ pub fn minimize_sampson_error<'a, DataClass: ObservedData<'a>>(
                     .sum::<na::DMatrix<f64>>()
             })
             .sum::<na::DMatrix<f64>>()
-    }) / data_container.len() as f64;
+    }) / (data_container.len() as f64 * 9.0);
     lstsq(&na::DMatrix::<f64>::from_column_slice(
         vec_size,
         vec_size,
-        (m - l).data.as_slice(),
+        (m - l).as_slice(),
     ))
 }

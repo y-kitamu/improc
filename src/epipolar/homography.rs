@@ -192,6 +192,10 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
     fn weights(&self, params: &na::DVector<f64>) -> Vec<f64> {
         let n_eqs = self.num_equation();
         let n_eqs_square = n_eqs * n_eqs;
+        if params.iter().all(|val| val.abs() < 1e-5) {
+            return vec![1.0; self.len() * n_eqs_square];
+        }
+
         (0..self.len())
             .map(|idx| {
                 let vars_mat = na::DMatrix::from_fn(n_eqs, n_eqs, |r, c| {
@@ -208,7 +212,32 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
     }
 
     fn update_delta(&mut self, params: &na::DVector<f64>) -> f64 {
-        todo!()
+        let weights = self.weights(params);
+        let n_eqs = self.num_equation();
+        let n_eqs_square = n_eqs * n_eqs;
+
+        (0..self.len())
+            .map(|idx| {
+                let delta = (0..n_eqs)
+                    .map(|i| {
+                        let xi = self.vector(n_eqs * idx + i);
+                        let dot = xi.dot(params);
+                        (0..n_eqs)
+                            .map(|j| {
+                                let w = weights[n_eqs_square * idx + n_eqs * i + j];
+                                let t = self.get_t(n_eqs * idx + j);
+                                w * dot * t.transpose() * params
+                            })
+                            .sum::<na::DVector<f64>>()
+                    })
+                    .sum::<na::DVector<f64>>();
+                self.delta[idx * 2][0] -= delta[0];
+                self.delta[idx * 2][1] -= delta[1];
+                self.delta[idx * 2 + 1][0] -= delta[2];
+                self.delta[idx * 2 + 1][1] -= delta[3];
+                delta.norm_squared()
+            })
+            .sum::<f64>()
     }
 
     fn get_data(&self) -> Vec<na::Point2<f64>> {
@@ -228,8 +257,10 @@ impl<'a> ObservedData<'a> for HomographyData<'a> {
 mod tests {
     use crate::{
         optimizer::{
+            fns::fns,
+            geometric::minimize_geometric_distance,
             least_square::{iterative_reweight, least_square_fitting},
-            taubin::taubin,
+            taubin::{renormalization, taubin},
         },
         PrintDebug,
     };
@@ -293,10 +324,10 @@ mod tests {
             res *= -1.0;
         }
 
-        // println!("GT : ");
-        // homo.print();
-        // println!("Pred : ");
-        // res.print();
+        println!("GT : ");
+        homo.print();
+        println!("Pred : ");
+        res.print();
         // assert!(
         //     (&homo - &res).norm_squared() < 1e-2,
         //     "res = {}",
@@ -383,6 +414,52 @@ mod tests {
             .map(|_| test_template(|pts| taubin::<HomographyData>(pts)))
             .map(|val| if val < 1e-4 { 1 } else { 0 })
             .sum();
+        println!("success : {} / {}", res, LOOP_NUM);
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
+    }
+
+    #[test]
+    fn test_renormalization() {
+        let res: usize = (0..LOOP_NUM)
+            .map(|_| test_template(|pts| renormalization::<HomographyData>(pts)))
+            .map(|val| if val < 1e-4 { 1 } else { 0 })
+            .sum();
+        println!("success : {} / {}", res, LOOP_NUM);
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
+    }
+
+    #[test]
+    fn test_fns() {
+        let res: usize = (0..LOOP_NUM)
+            .map(|_| test_template(|pts| fns::<HomographyData>(pts)))
+            .map(|val| if val < 1e-4 { 1 } else { 0 })
+            .sum();
+        println!("success : {} / {}", res, LOOP_NUM);
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
+    }
+
+    #[test]
+    fn test_geometric() {
+        let res: usize = (0..LOOP_NUM)
+            .map(|_| test_template(|pts| minimize_geometric_distance::<HomographyData>(pts)))
+            .map(|val| if val < 1e-4 { 1 } else { 0 })
+            .sum();
+        println!("success : {} / {}", res, LOOP_NUM);
         assert!(
             res as f64 > LOOP_NUM as f64 * 0.9,
             "success : {} / {}",
