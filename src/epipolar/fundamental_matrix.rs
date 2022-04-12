@@ -196,6 +196,8 @@ pub mod tests {
     use super::*;
     use rand::Rng;
 
+    const LOOP_NUM: usize = 50;
+
     pub fn create_test_data() -> (na::Matrix3<f64>, Vec<na::Point2<f64>>) {
         let std_dev = 0.05;
         create_test_data_with_params(std_dev)
@@ -267,41 +269,59 @@ pub mod tests {
 
     #[test]
     fn test_iterative_reweight() {
-        let res: f64 = (0..20)
+        let res: usize = (0..LOOP_NUM)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = iterative_reweight::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
-            .sum::<f64>()
-            / 20.0;
-        assert!(res.abs() < 1e-2, "res = {}", res);
+            .map(|val| if val.abs() < 1e-2 { 1 } else { 0 })
+            .sum();
+
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
     }
 
     #[test]
     fn test_taubin() {
-        let res: f64 = (0..20)
+        let res: usize = (0..LOOP_NUM)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = taubin::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
-            .sum::<f64>()
-            / 20.0;
-        assert!(res.abs() < 1e-2, "res = {}", res);
+            .map(|val| if val.abs() < 1e-2 { 1 } else { 0 })
+            .sum();
+
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
     }
 
     #[test]
     fn test_renormalization() {
-        let res: f64 = (0..20)
+        let res: usize = (0..LOOP_NUM)
             .map(|_| {
                 let (_, points) = create_test_data();
                 let res = renormalization::<FundamentalMatrixData>(&points).unwrap();
                 assert_result(res, points)
             })
-            .sum::<f64>()
-            / 20.0;
-        assert!(res.abs() < 1e-2, "res = {}", res);
+            .map(|val| if val.abs() < 1e-2 { 1 } else { 0 })
+            .sum();
+
+        assert!(
+            res as f64 > LOOP_NUM as f64 * 0.9,
+            "success : {} / {}",
+            res,
+            LOOP_NUM
+        );
     }
 
     #[test]

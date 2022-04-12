@@ -270,7 +270,7 @@ mod tests {
 
     use rand::Rng;
 
-    const LOOP_NUM: usize = 100;
+    const LOOP_NUM: usize = 50;
 
     fn create_random_homography() -> na::DMatrix<f64> {
         let mut rng = rand::thread_rng();
