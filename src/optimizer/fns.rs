@@ -2,10 +2,7 @@
 use anyhow::Result;
 use nalgebra as na;
 
-use crate::{
-    linalg::{get_zero_mat, matrix::lstsq},
-    PrintDebug,
-};
+use crate::linalg::{get_zero_mat, matrix::lstsq};
 
 use super::ObservedData;
 

@@ -35,10 +35,10 @@ pub fn triangulation(
 
 /// Optimal correction of position of corresponding points.
 pub fn optimal_correction<'a, DataClass: ObservedData<'a>>(
-    fund_mat: &na::DMatrix<f64>,
+    matrix: &na::DMatrix<f64>,
     data: &'a [na::Point2<f64>],
 ) -> Result<(na::Point2<f64>, na::Point2<f64>)> {
-    let params = na::DVector::from_row_slice(fund_mat.transpose().as_slice());
+    let params = na::DVector::from_row_slice(matrix.transpose().as_slice());
     let (_, data) = minimize_geometric_distance_impl::<DataClass>(&data, &params, false)?;
     Ok((data[0], data[1]))
 }
