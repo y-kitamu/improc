@@ -81,13 +81,23 @@ pub fn constrained_lstsq(
 
 /// Calculate pseudo inverse of a given matrix.
 pub fn pseudo_inverse(matrix: &na::DMatrix<f64>) -> Result<na::DMatrix<f64>> {
+    pseudo_inverse_with_rank(matrix, matrix.nrows())
+}
+
+pub fn pseudo_inverse_with_rank(
+    matrix: &na::DMatrix<f64>,
+    rank: usize,
+) -> Result<na::DMatrix<f64>> {
     let svd = matrix.clone().svd(true, true);
-    let inv_d = na::Matrix::from_diagonal(&na::DVector::from_vec(
+    let mut inv_d = na::Matrix::from_diagonal(&na::DVector::from_vec(
         svd.singular_values
             .iter()
             .map(|val| if *val < 1e-5 { 0.0 } else { 1.0 / val })
             .collect::<Vec<f64>>(),
     ));
+    for idx in rank..inv_d.nrows() {
+        inv_d[idx] = 0.0;
+    }
     Ok(svd.v_t.context("Failed to get SVD value")?.transpose()
         * inv_d
         * svd.u.context("Failed to get SVD value")?.transpose())
