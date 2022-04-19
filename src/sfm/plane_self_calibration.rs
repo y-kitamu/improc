@@ -3,7 +3,7 @@ use std::cmp::PartialOrd;
 use anyhow::{Context, Result};
 use nalgebra as na;
 
-use crate::{linalg::get_identity_mat, PrintDebug};
+use crate::linalg::get_identity_mat;
 
 /// self calibration (calculate camera pose) using homography.
 /// - `homography_mat`
