@@ -337,9 +337,9 @@ dependencies = [
 
 [[package]]
 name = "imgui-opengl-renderer"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "562c7be8f6c93a0846b68535b53b4ede180d82860f7b656354f9ce07d4994992"
+checksum = "db78c2c7dd32060bafdb4b2595d994135b21d0d666103b9c921ef5d955212b8a"
 dependencies = [
  "gl_generator",
  "imgui",
