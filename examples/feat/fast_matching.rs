@@ -18,28 +18,6 @@ use improc::{
     process_dynamic_image, timer,
 };
 
-#[derive(Parser)]
-#[clap(version = "1.0", author = "Y. Kitamu")]
-struct Opts {
-    #[clap(short, long)]
-    filename: Option<String>,
-
-    #[clap(short, long, default_value = "brief")]
-    descriptor: String,
-
-    #[clap(long, default_value = "0.0")]
-    dx: f32,
-
-    #[clap(long, default_value = "0.0")]
-    dy: f32,
-
-    #[clap(short, long, default_value = "0.0")]
-    rot_angle: f32,
-
-    #[clap(long, default_value = "500")]
-    max_kpts: usize,
-}
-
 fn get_affine_mat(image: &DynamicImage, opts: &Opts) -> Matrix2x3<f32> {
     let (width, height) = (image.width(), image.height());
     let mut mat = get_rotation_matrix(
@@ -170,17 +148,4 @@ fn main() {
         .map(|pair| vec![pair[0].0.clone(), pair[1].0.clone()])
         .collect();
     println!("num matches = {}", mps.len());
-    let app = viewer::app::App::new(1280, 960).unwrap();
-    app.add_image(&image, "color")
-        .add_image(&DynamicImage::ImageLuma8(gray), "gray")
-        .add_image(&DynamicImage::ImageLuma8(transformed), "transformed")
-        .add_points("gray", &pts[0], 1.0, 0.0, 0.0)
-        .add_points("transformed", &pts[1], 0.0, 0.0, 1.0)
-        .add_points("color", &pts[0], 0.0, 0.0, 1.0)
-        .add_point_relations(&mps, &ids)
-        .add_arrows("color", &arrows0)
-        .add_arrows("gray", &arrows0)
-        .add_arrows("transformed", &arrows1)
-        .run()
-        .unwrap();
 }
