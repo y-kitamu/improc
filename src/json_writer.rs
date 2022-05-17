@@ -1,3 +1,11 @@
+use anyhow::{Context, Result};
+use nalgebra as na;
+use std::{
+    fs::{self, File},
+    io::prelude::*,
+    path::Path,
+};
+
 use serde::Serialize;
 
 use crate::feat::{keypoints::KeyPoint, matcher::Match, Distance};
@@ -47,14 +55,14 @@ impl RenderMode {
 
 #[derive(Serialize)]
 struct Schema {
-    parts_type: &'static str,
-    render_mode: &'static str,
+    partsType: &'static str,
+    renderMode: &'static str,
     datas: Vec<Data>,
 }
 
 #[derive(Serialize)]
 struct Data {
-    variable_name: String,
+    variableName: String,
     data: Vec<f32>,
 }
 
@@ -66,19 +74,28 @@ impl ViewerWriter {
         }
     }
 
-    pub fn add_points(&mut self, points: &[KeyPoint]) {
+    pub fn add_points(&mut self, points: &[KeyPoint], color: &na::Vector3<f32>) {
         let data: Vec<f32> = points
             .iter()
             .map(|kpt| vec![kpt.x(), kpt.y()])
             .flatten()
             .collect();
         self.schemas.push(Schema {
-            parts_type: PartsType::point.as_str(),
-            render_mode: RenderMode::POINTS.as_str(),
-            datas: vec![Data {
-                variable_name: "aPos".to_string(),
-                data,
-            }],
+            partsType: PartsType::point.as_str(),
+            renderMode: RenderMode::POINTS.as_str(),
+            datas: vec![
+                Data {
+                    variableName: "aPos".to_string(),
+                    data,
+                },
+                Data {
+                    variableName: "aColor".to_string(),
+                    data: (0..(points.len()))
+                        .map(|_| vec![color.x, color.y, color.z])
+                        .flatten()
+                        .collect(),
+                },
+            ],
         });
     }
 
@@ -96,21 +113,30 @@ impl ViewerWriter {
             .flatten()
             .collect();
         self.schemas.push(Schema {
-            parts_type: PartsType::line.as_str(),
-            render_mode: RenderMode::LINES.as_str(),
+            partsType: PartsType::line.as_str(),
+            renderMode: RenderMode::LINES.as_str(),
             datas: vec![Data {
-                variable_name: "aPos".to_string(),
+                variableName: "aPos".to_string(),
                 data,
             }],
         });
     }
 
-    pub fn flush(&self) {
+    pub fn flush(&self) -> Result<String> {
         let json_strs: Vec<String> = self
             .schemas
             .iter()
             .map(|schema| serde_json::to_string_pretty(&serde_json::json!(schema)).unwrap())
             .collect();
-        println!("[\n{}\n]", json_strs.join(",\n"));
+        let output_str = format!("[\n{}\n]", json_strs.join(",\n"));
+        let mut file = File::create(&self.filename)?;
+        {
+            let outdir = Path::new(&self.filename)
+                .parent()
+                .context("Failed to get parent path")?;
+            fs::create_dir_all(outdir)?;
+        }
+        file.write_all(output_str.as_bytes())?;
+        Ok(output_str)
     }
 }
