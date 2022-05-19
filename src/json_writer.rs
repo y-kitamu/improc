@@ -77,7 +77,7 @@ impl ViewerWriter {
     pub fn add_points(&mut self, points: &[KeyPoint], color: &na::Vector3<f32>) {
         let data: Vec<f32> = points
             .iter()
-            .map(|kpt| vec![kpt.x(), kpt.y()])
+            .map(|kpt| vec![kpt.x(), kpt.y(), 0.0])
             .flatten()
             .collect();
         self.schemas.push(Schema {
