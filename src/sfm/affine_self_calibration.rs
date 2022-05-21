@@ -1,7 +1,10 @@
 use anyhow::{ensure, Context, Result};
 use nalgebra as na;
 
-use crate::linalg::get_zero_mat;
+use crate::{
+    linalg::{get_zero_mat, matrix::lstsq},
+    PrintDebug,
+};
 
 /// Self calibration using affine camera model.
 /// - observed_pts : Observed points. (2d vector : [index of camera][index of point])
@@ -10,8 +13,8 @@ pub fn affine_self_calibration(
     observed_pts: &[Vec<na::Point2<f64>>],
 ) -> Result<(na::DMatrix<f64>, na::DMatrix<f64>)> {
     ensure!(!observed_pts.is_empty(), "observed_pts must not be empty");
-    let n_points = observed_pts.len();
-    let n_cameras = observed_pts[0].len();
+    let n_points = observed_pts[0].len();
+    let n_cameras = observed_pts.len();
 
     let observation_matrix: na::DMatrix<f64> = na::DMatrix::from_row_slice(
         2 * n_cameras,
@@ -61,8 +64,29 @@ pub fn affine_self_calibration(
         r2 * bs[(1, 0)], r2 * bs[(1, 4)], r2 * bs[(1, 8)], bs[(1, 5)], bs[(1, 6)], bs[(1, 1)],
     ]);
 
-    // constrained least square method
+    // least square solution
+    let tau: na::DVector<f64> = lstsq(&bmat)?;
+    #[rustfmt::skip]
+    let mut metrix_mat: na::DMatrix<f64> = na::DMatrix::from_row_slice(3, 3, &[
+        tau[0], tau[5] / r2, tau[4] / r2,
+        tau[5] / r2, tau[1], tau[3] / r2,
+        tau[4] / r2, tau[3] / r2, tau[2]
+    ]);
+    if metrix_mat.determinant() < 0.0 {
+        metrix_mat *= -1.0;
+    }
 
+    let affine: na::DMatrix<f64> = metrix_mat
+        .cholesky()
+        .context("Failed to cholesky decomposition")?
+        .l();
+    let affine_inv = affine
+        .clone()
+        .try_inverse()
+        .context("Failed to calculate inverse matrix")?;
+
+    let motion_mat = motion_mat * &affine;
+    let shape_mat = &affine_inv * shape_mat;
     Ok((motion_mat, shape_mat))
 }
 
@@ -80,7 +104,49 @@ fn calc_motion_and_shape_matrix(
         singulars[2],
     ]));
     let motion_matrix = na::DMatrix::from_columns(&[u.column(0), u.column(1), u.column(2)]);
-    let shape_matrix =
-        sigma * na::DMatrix::from_columns(&[v_t.column(0), v_t.column(1), v_t.column(2)]);
+    // println!("sigma = {:?}", sigma);
+    // println!("v_t = {:?}", v_t);
+    let shape_matrix = sigma * na::DMatrix::from_rows(&[v_t.row(0), v_t.row(1), v_t.row(2)]);
     Ok((motion_matrix, shape_matrix))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_affine_self_calibration() {
+        #[rustfmt::skip]
+        let observed_mat = vec![
+            vec![na::Point2::new(1.0, 1.0), na::Point2::new(0.0, 0.0),
+                 na::Point2::new(0.0, 1.0), na::Point2::new(1.0, 0.0)],
+            vec![na::Point2::new(0.0, 1.0), na::Point2::new(-1.0, 0.0),
+                 na::Point2::new(-1.0, 1.0), na::Point2::new(0.0, 0.0)],
+            vec![na::Point2::new(0.0, 0.0), na::Point2::new(-1.0, -1.0),
+                 na::Point2::new(-1.0, 0.0), na::Point2::new(0.0, -1.0)],
+        ];
+        let (motion, shape) = affine_self_calibration(&observed_mat).unwrap();
+        println!("motion = {:?}", motion);
+        println!("shape = {:?}", shape);
+        assert_eq!(motion.ncols(), 3);
+        assert_eq!(shape.nrows(), 3);
+    }
+
+    #[test]
+    fn test_calc_motion_and_shape_mat() {
+        #[rustfmt::skip]
+        let observed_mat = na::DMatrix::from_row_slice(6, 4, &[
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 1.0, 0.0,
+            0.0, -1.0, -1.0, 0.0,
+            1.0, 0.0, 1.0, 0.0,
+            0.0, -1.0, -1.0, 0.0,
+            0.0, -1.0, 0.0, -1.0
+        ]);
+        let (motion, shape) = calc_motion_and_shape_matrix(&observed_mat).unwrap();
+        println!("{:?}", motion);
+        println!("{:?}", shape);
+        assert_eq!(motion.ncols(), 3);
+        assert_eq!(shape.nrows(), 3);
+    }
 }

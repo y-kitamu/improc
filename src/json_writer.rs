@@ -15,54 +15,56 @@ pub struct ViewerWriter {
     schemas: Vec<Schema>,
 }
 
+#[allow(dead_code)]
 enum PartsType {
-    image,
-    point,
-    line,
+    Image,
+    Point,
+    Line,
 }
 
 impl PartsType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            PartsType::image => "image",
-            PartsType::point => "point",
-            PartsType::line => "line",
+            PartsType::Image => "image",
+            PartsType::Point => "point",
+            PartsType::Line => "line",
         }
     }
 }
 
+#[allow(dead_code)]
 enum RenderMode {
-    POINTS,
-    LINES,
-    LINE_LOOP,
-    TRIANGLES,
-    TRIANGLE_STRIP,
-    TRIANGLE_FAN,
+    Points,
+    Lines,
+    LineLoop,
+    Triangles,
+    TriangleStrip,
+    TriangleFan,
 }
 
 impl RenderMode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RenderMode::POINTS => "POINTS",
-            RenderMode::LINES => "LINES",
-            RenderMode::LINE_LOOP => "LINE_LOOP",
-            RenderMode::TRIANGLES => "TRIANGLES",
-            RenderMode::TRIANGLE_STRIP => "TRIANGLE_STRIP",
-            RenderMode::TRIANGLE_FAN => "TRIANGLE_FAN",
+            RenderMode::Points => "POINTS",
+            RenderMode::Lines => "LINES",
+            RenderMode::LineLoop => "LINE_LOOP",
+            RenderMode::Triangles => "TRIANGLES",
+            RenderMode::TriangleStrip => "TRIANGLE_STRIP",
+            RenderMode::TriangleFan => "TRIANGLE_FAN",
         }
     }
 }
 
 #[derive(Serialize)]
 struct Schema {
-    partsType: &'static str,
-    renderMode: &'static str,
+    parts_type: &'static str,
+    render_mode: &'static str,
     datas: Vec<Data>,
 }
 
 #[derive(Serialize)]
 struct Data {
-    variableName: String,
+    variable_name: String,
     data: Vec<f32>,
 }
 
@@ -81,15 +83,15 @@ impl ViewerWriter {
             .flatten()
             .collect();
         self.schemas.push(Schema {
-            partsType: PartsType::point.as_str(),
-            renderMode: RenderMode::POINTS.as_str(),
+            parts_type: PartsType::Point.as_str(),
+            render_mode: RenderMode::Points.as_str(),
             datas: vec![
                 Data {
-                    variableName: "aPos".to_string(),
+                    variable_name: "aPos".to_string(),
                     data,
                 },
                 Data {
-                    variableName: "aColor".to_string(),
+                    variable_name: "aColor".to_string(),
                     data: (0..(points.len()))
                         .map(|_| vec![color.x, color.y, color.z])
                         .flatten()
@@ -113,10 +115,10 @@ impl ViewerWriter {
             .flatten()
             .collect();
         self.schemas.push(Schema {
-            partsType: PartsType::line.as_str(),
-            renderMode: RenderMode::LINES.as_str(),
+            parts_type: PartsType::Line.as_str(),
+            render_mode: RenderMode::Lines.as_str(),
             datas: vec![Data {
-                variableName: "aPos".to_string(),
+                variable_name: "aPos".to_string(),
                 data,
             }],
         });
