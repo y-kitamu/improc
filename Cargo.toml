@@ -8,7 +8,7 @@ edition = "2018"
 
 [workspace]
 members = [
-    "viewer",
+    "viewer/src-tauri"
 ]
 
 [dependencies]
