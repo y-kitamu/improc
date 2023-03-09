@@ -17,10 +17,14 @@ const App = () => {
     <div className="container">
       <Canvas>
         <ambientLight intensity={0.1} />
-        <directionalLight color="red" position={[0, 0, 5]} />{" "}
-        <mesh>
+        <directionalLight color="red" position={[0, 0, 5]} />
+        <mesh position={[2, 2, 0]}>
           <boxGeometry args={[2, 2, 2]} />
-          <meshStandardMaterial />
+          <meshBasicMaterial />
+        </mesh>
+        <mesh position={[-2, -2, 0]}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshBasicMaterial color="blue" />
         </mesh>
       </Canvas>
     </div>
