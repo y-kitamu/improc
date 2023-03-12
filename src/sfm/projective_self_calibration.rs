@@ -2,14 +2,14 @@ use anyhow::{Context, Result};
 use nalgebra as na;
 
 /// - observed_pts : Observed points. (2d vector : [index of camera][index of point])
-pub fn projective_self_calibration(
-    observed_points: &[Vec<na::Point2<f64>>],
-) -> Result<(na::DMatrix<f64>, na::DMatrix<f64>)> {
-    projective_reconstruction();
-    euclide_reconstruction();
-}
+// pub fn projective_self_calibration(
+//     observed_points: &[Vec<na::Point2<f64>>],
+// ) -> Result<(na::DMatrix<f64>, na::DMatrix<f64>)> {
+//     projective_reconstruction();
+//     euclide_reconstruction();
+// }
 
-fn projective_reconstruction() {}
+// fn projective_reconstruction() {}
 
 ///
 /// - observed_pts : Observed points. (2d vector : [index of camera][index of point])
@@ -76,14 +76,14 @@ fn get_observed_matrix(
     })
 }
 
-fn get_motion_and_shape_from_svd(
-    svd: &na::SVD<f64, na::Dynamic, na::Dynamic>,
-) -> Result<(na::DMatrix<f64>, na::DMatrix<f64>)> {
-}
+// fn get_motion_and_shape_from_svd(
+//     svd: &na::SVD<f64, na::Dynamic, na::Dynamic>,
+// ) -> Result<(na::DMatrix<f64>, na::DMatrix<f64>)> {
+// }
 
-fn calculate_reprojection_error(
-    observed_points: &[Vec<na::Point2<f64>>],
-    motion_mat: &na::DMatrix<f64>,
-    shape_mat: &na::DMatrix<f64>,
-) -> f64 {
-}
+// fn calculate_reprojection_error(
+//     observed_points: &[Vec<na::Point2<f64>>],
+//     motion_mat: &na::DMatrix<f64>,
+//     shape_mat: &na::DMatrix<f64>,
+// ) -> f64 {
+// }
