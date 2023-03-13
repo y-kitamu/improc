@@ -27,7 +27,15 @@ const App = () => {
         ],
       });
 
-      console.log(selected);
+      if (Array.isArray(selected)) {
+        selected.forEach((path) => {});
+      } else if (selected === null) {
+        console.log("no file selected");
+      } else {
+        console.log(selected);
+        let res = await invoke("read_image", { path: selected });
+        console.log(`width = ${res.width}, height = ${res.height}`);
+      }
     })();
   };
 
