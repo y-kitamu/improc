@@ -27,15 +27,15 @@ const App = () => {
         ],
       });
 
-      if (Array.isArray(selected)) {
-        selected.forEach((path) => {});
-      } else if (selected === null) {
+      if (selected === null) {
         console.log("no file selected");
-      } else {
-        console.log(selected);
-        let res = await invoke("read_image", { path: selected });
-        console.log(`width = ${res.width}, height = ${res.height}`);
+        return;
       }
+      const allImages = Promise.all(
+        selected.map(async (path) => {
+          return await invoke("read_image", { path: path });
+        })
+      );
     })();
   };
 

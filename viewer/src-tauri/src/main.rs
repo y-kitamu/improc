@@ -14,7 +14,7 @@ impl Image {
         let (w, h) = img.dimensions();
         Image {
             size: vec![w, h],
-            data: img.into_bytes(),
+            data: img.to_rgba8().as_raw().to_vec(),
         }
     }
 }
@@ -30,10 +30,13 @@ fn read_image(path: &str) -> Image {
     println!("Reading image from {}", path);
     match image::open(path) {
         Ok(image) => Image::from_dynamic_image(image),
-        Err(_) => Image {
-            size: vec![],
-            data: vec![],
-        },
+        Err(err) => {
+            println!("Failed to read image {}", err);
+            Image {
+                size: vec![],
+                data: vec![],
+            }
+        }
     }
 }
 
