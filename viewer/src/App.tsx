@@ -3,6 +3,12 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { Canvas } from "@react-three/fiber";
 import { dialog } from "@tauri-apps/api";
 import { Button } from "@mui/material";
+import * as THREE from "three";
+
+type Image = {
+  size: number[];
+  data: number[];
+};
 
 const App = () => {
   const [greetMsg, setGreetMsg] = useState("");
@@ -31,10 +37,18 @@ const App = () => {
         console.log("no file selected");
         return;
       }
-      const allImages = Promise.all(
+      const allImages: Image[] = Promise.all(
         selected.map(async (path) => {
           return await invoke("read_image", { path: path });
         })
+      );
+
+      const image = allImages[0];
+      const texture = THREE.DataArrayTexture(
+        image.data,
+        image.size[0],
+        image.size[1],
+        1
       );
     })();
   };
@@ -50,7 +64,7 @@ const App = () => {
         <directionalLight color="red" position={[0, 0, 5]} />
         <mesh position={[2, 2, 0]}>
           <boxGeometry args={[2, 2, 2]} />
-          <meshBasicMaterial />
+          <shaderMaterial />
         </mesh>
         <mesh position={[-2, -2, 0]}>
           <sphereGeometry args={[1, 16, 16]} />
