@@ -1,9 +1,17 @@
-import React, { ReactEventHandler, Suspense, useEffect, useState } from "react";
+import React, {
+  ReactEventHandler,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { invoke } from "@tauri-apps/api/tauri";
-import { Canvas, useLoader } from "@react-three/fiber";
+import { Canvas, useLoader, useFrame } from "@react-three/fiber";
 import { dialog } from "@tauri-apps/api";
 import { Button } from "@mui/material";
 import * as THREE from "three";
+import imgUrl from "../src-tauri/icons/128x128.png";
+import { MeshBasicMaterial } from "three";
 
 type Image = {
   size: number[];
@@ -14,63 +22,116 @@ type ImageProps = {
   selected: string[];
 };
 
+const createTexture = (): THREE.Texture => {
+  //-------- ----------
+  // TEXTURE
+  //-------- ----------
+  // USING THREE DATA TEXTURE To CREATE A RAW DATA TEXTURE
+  const width = 32,
+    height = 32;
+  const size = width * height;
+  const data = new Uint8Array(4 * size);
+  for (let i = 0; i < size; i++) {
+    const stride = i * 4,
+      a1 = i / size,
+      a2 = (i % width) / width;
+    // set r, g, b, and alpha data values
+    data[stride] = Math.floor(255 * a1); // red
+    data[stride + 1] = 255 - Math.floor(255 * a1); // green
+    data[stride + 2] = Math.floor(255 * a2); // blue
+    data[stride + 3] = 255; // alpha
+  }
+  const texture = new THREE.DataTexture(data, width, height);
+  texture.needsUpdate = true;
+  return texture;
+};
+
+const loadImageTexture = async (path: string): Promise<THREE.Texture> => {
+  const image = await invoke("read_image", { path });
+  const texture = new THREE.DataTexture(
+    new Uint8Array(image.data),
+    image.size[0],
+    image.size[1],
+    THREE.RGBAFormat
+  );
+  texture.needsUpdate = true;
+  return texture;
+};
+
+const test = () => {
+  //-------- ----------
+  // SCENE, CAMERA, RENDERER
+  //-------- ----------
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, 320 / 240, 0.1, 1000);
+  camera.position.set(2, 2, 2);
+  camera.lookAt(0, 0, 0);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(640, 480);
+  (document.getElementById("demo") || document.body).appendChild(
+    renderer.domElement
+  );
+
+  const texture = createTexture();
+  //-------- ----------
+  // MESH
+  //-------- ----------
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(3, 3, 1, 1),
+    new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.DoubleSide,
+    })
+  );
+  scene.add(plane);
+  //-------- ----------
+  // RENDER
+  //-------- ----------
+  renderer.render(scene, camera);
+};
+
 const Image = (props: ImageProps) => {
+  console.log("Render Image");
   const { selected } = props;
-  const [map, setMap] = useState<THREE.texture>();
+  const materialRef = useRef<MeshBasicMaterial>();
+  const mapRef = useRef<THREE.Texture>(createTexture());
+  const [cnt, setCnt] = useState(0);
 
-  useEffect(() => {
-    const loadTexture = async () => {
-      if (selected.length === 0) {
-        return;
-      }
-      const allImages: Image[] = await Promise.all(
-        selected.map(async (path: string) => {
-          return await invoke("read_image", { path: path });
-        })
-      );
+  if (selected.length > 0) {
+    (async () => {
+      mapRef.current = await loadImageTexture(selected[0]);
+      // setCnt(cnt + 1);
+    })();
+  }
 
-      const image = allImages[0];
-      const texture = new THREE.DataArrayTexture(
-        image.data,
-        image.size[0],
-        image.size[1],
-        1
-      );
-      setMap(texture);
-    };
+  useFrame(() => {
+    if (materialRef.current) {
+      materialRef.current.map = mapRef.current;
+    }
+  });
 
-    const texture = useLoader(THREE.TextureLoader, selected[0]);
-    setMap(texture);
-  }, [selected]);
-
-  console.log("map : ", map);
-  // <ambientLight intensity={0.1} />
-  // <directionalLight color="red" position={[0, 0, 5]} />
-  // <sprite position={[1, 1, 0]}>
-  //   {{ map } && <spriteMaterial map={map} />}
-  // </sprite>
-  // <mesh position={[0, 0, 0]}>
-  //   <sphereGeometry args={[3, 3, 3]} />
-  //   <meshBasicMaterial color="blue" map={map} />
-  // </mesh>
+  // useLoader();
+  console.log("map : ", mapRef);
 
   return (
     <>
-      <Suspense fallback={null}>
-        {map && <primitive object={map.scene} />}
-      </Suspense>
+      <ambientLight intensity={0.1} />
+      <directionalLight color="red" position={[0, 0, 5]} />
+      <mesh>
+        <planeBufferGeometry args={[2, 2]} />
+        <meshBasicMaterial ref={materialRef} map={mapRef.current} />
+      </mesh>
+      <mesh position={[-3, -3, 0]}>
+        <sphereGeometry args={[3, 3, 3]} />
+        <meshBasicMaterial color="blue" />
+      </mesh>
     </>
   );
 };
 
 const App = () => {
-  const [greetMsg, setGreetMsg] = useState("");
+  console.log("Render App");
   const [filelist, setFilelist] = useState<string[]>([]);
-
-  const greet = async () => {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    setGreetMsg(await invoke("greet", { name }));
-  };
 
   const onClickButton = (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
@@ -94,18 +155,44 @@ const App = () => {
       }
     })();
   };
+  useEffect(() => {
+    test();
+  }, []);
+
+  console.log("filelist : ", filelist);
 
   return (
-    <div className="container">
+    <>
       <button onClick={onClickButton}>Open</button>
       <Button variant="contained" onClick={onClickButton}>
         Open by mui
       </Button>
       <Canvas>
-        <Image selected={filelist} />
+        <Suspense fallback={null}>
+          <Image selected={filelist} />
+        </Suspense>
       </Canvas>
-    </div>
+    </>
   );
 };
 
 export default App;
+
+// function Scene() {
+//   // const colorMap = useLoader(TextureLoader, "PavingStones092_1K_Color.jpg");
+//   return (
+//     <>
+//       <ambientLight intensity={0.2} />
+//       <directionalLight />
+//       <mesh>
+//         <sphereGeometry args={[1, 32, 32]} />
+//         <meshStandardMaterial />
+//       </mesh>
+//     </>
+//   );
+// }
+
+// export default function App() {
+//   return (
+//   );
+// }
